@@ -1,0 +1,18 @@
+.workflow/
+
+# generated artifacts (keep dir structure via .gitkeep)
+outputs/artifacts/*
+outputs/datasets/*
+outputs/results/*
+outputs/figures/*
+outputs/reports/*
+!outputs/artifacts/.gitkeep
+!outputs/datasets/.gitkeep
+!outputs/results/.gitkeep
+!outputs/figures/.gitkeep
+!outputs/reports/.gitkeep
+graphify-out
+model
+datasets
+__pycache__
+.vscode

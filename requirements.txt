@@ -1,0 +1,5 @@
+# Tugas Akhir - Klasifikasi Sentimen Solar Home System (Hybrid NLP)
+# Tahap fondasi data: DatasetService + PreprocessingService.
+# Catatan: TIDAK menggunakan pandas (seluruh operasi DataFrame via Polars).
+
+polars>=1.41
