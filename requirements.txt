@@ -3,6 +3,7 @@
 # Catatan: TIDAK menggunakan pandas (seluruh operasi DataFrame via Polars).
 
 polars>=1.41
+matplotlib>=3.8
 
 # Opsional untuk backend IndoBERT. Install manual jika backend indobert dipakai:
 # transformers>=4.40
