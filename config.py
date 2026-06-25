@@ -24,6 +24,9 @@ REPORTS: Path = OUTPUTS / "reports"
 # File kamus
 SLANG_DICT_PATH: Path = RESOURCES / "slang.json"
 NON_STANDARD_DICT_PATH: Path = RESOURCES / "non_standard.json"
+LEXICON_WORDS_PATH: Path = RESOURCES / "lexicon_words.json"
+PHRASE_RULES_PATH: Path = RESOURCES / "phrase_rules.json"
+MODIFIER_RULES_PATH: Path = RESOURCES / "modifier_rules.json"
 
 # Output artefak
 DATASET_SUMMARY_PATH: Path = ARTIFACTS / "dataset_summary.json"

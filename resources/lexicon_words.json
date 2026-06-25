@@ -1,0 +1,662 @@
+{
+  "positive": [
+    {
+      "term": "membantu",
+      "weight": 1.2,
+      "category": "benefit",
+      "reason": "Menunjukkan manfaat langsung bagi pengguna SHS"
+    },
+    {
+      "term": "terang",
+      "weight": 1.5,
+      "category": "lighting_quality",
+      "reason": "Indikator utama keberhasilan fungsi lampu SHS"
+    },
+    {
+      "term": "bersyukur",
+      "weight": 1.8,
+      "category": "user_satisfaction",
+      "reason": "Ekspresi kepuasan dan rasa terima kasih pengguna"
+    },
+    {
+      "term": "menghemat",
+      "weight": 1.5,
+      "category": "cost_benefit",
+      "reason": "Manfaat ekonomi langsung dari penggunaan SHS"
+    },
+    {
+      "term": "hemat",
+      "weight": 1.3,
+      "category": "cost_benefit",
+      "reason": "Penghematan biaya energi dibanding sumber konvensional"
+    },
+    {
+      "term": "terpasang",
+      "weight": 0.6,
+      "category": "installation_success",
+      "reason": "Menunjukkan instalasi berhasil dilaksanakan"
+    },
+    {
+      "term": "berfungsi",
+      "weight": 1.2,
+      "category": "device_function",
+      "reason": "Perangkat berjalan sesuai tujuan"
+    },
+    {
+      "term": "nyala",
+      "weight": 1.3,
+      "category": "lighting_quality",
+      "reason": "Lampu atau sistem aktif berfungsi"
+    },
+    {
+      "term": "lancar",
+      "weight": 1.2,
+      "category": "system_performance",
+      "reason": "Sistem bekerja tanpa hambatan"
+    },
+    {
+      "term": "gratis",
+      "weight": 1.4,
+      "category": "cost_benefit",
+      "reason": "Penerimaan bantuan tanpa biaya dirasakan positif"
+    },
+    {
+      "term": "puas",
+      "weight": 1.5,
+      "category": "user_satisfaction",
+      "reason": "Ekspresi kepuasan pengguna secara langsung"
+    },
+    {
+      "term": "senang",
+      "weight": 1.3,
+      "category": "user_satisfaction",
+      "reason": "Respons emosi positif terhadap SHS"
+    },
+    {
+      "term": "terbantu",
+      "weight": 1.4,
+      "category": "benefit",
+      "reason": "Pengguna merasakan dampak positif nyata"
+    },
+    {
+      "term": "merata",
+      "weight": 1.0,
+      "category": "distribution_fairness",
+      "reason": "Distribusi bantuan yang adil dipersepsi positif"
+    },
+    {
+      "term": "andal",
+      "weight": 1.5,
+      "category": "reliability",
+      "reason": "Keandalan sistem dinilai tinggi oleh pengguna"
+    },
+    {
+      "term": "awet",
+      "weight": 1.5,
+      "category": "durability",
+      "reason": "Daya tahan baterai atau komponen yang baik"
+    },
+    {
+      "term": "tahan",
+      "weight": 1.2,
+      "category": "durability",
+      "reason": "Perangkat tahan terhadap kondisi cuaca atau pemakaian"
+    },
+    {
+      "term": "prima",
+      "weight": 1.4,
+      "category": "system_performance",
+      "reason": "Kondisi sistem dalam keadaan optimal"
+    },
+    {
+      "term": "stabil",
+      "weight": 1.4,
+      "category": "system_performance",
+      "reason": "Tegangan atau daya output konsisten"
+    },
+    {
+      "term": "responsif",
+      "weight": 1.2,
+      "category": "service_quality",
+      "reason": "Teknisi atau layanan purna jual cepat tanggap"
+    },
+    {
+      "term": "profesional",
+      "weight": 1.3,
+      "category": "service_quality",
+      "reason": "Kualitas pemasangan atau pelayanan dinilai tinggi"
+    },
+    {
+      "term": "cepat",
+      "weight": 1.1,
+      "category": "service_quality",
+      "reason": "Proses pemasangan atau respons layanan berlangsung cepat"
+    },
+    {
+      "term": "aman",
+      "weight": 1.3,
+      "category": "safety",
+      "reason": "Sistem dinilai aman digunakan"
+    },
+    {
+      "term": "mudah",
+      "weight": 1.1,
+      "category": "usability",
+      "reason": "Kemudahan penggunaan perangkat SHS"
+    },
+    {
+      "term": "bagus",
+      "weight": 1.2,
+      "category": "general_positive",
+      "reason": "Penilaian umum positif terhadap SHS"
+    },
+    {
+      "term": "baik",
+      "weight": 1.0,
+      "category": "general_positive",
+      "reason": "Penilaian umum positif dengan intensitas sedang"
+    },
+    {
+      "term": "mantap",
+      "weight": 1.3,
+      "category": "general_positive",
+      "reason": "Ekspresi informal kepuasan kuat dalam bahasa sehari-hari"
+    },
+    {
+      "term": "bermanfaat",
+      "weight": 1.4,
+      "category": "benefit",
+      "reason": "Manfaat nyata dirasakan pengguna"
+    },
+    {
+      "term": "produktif",
+      "weight": 1.4,
+      "category": "economic_impact",
+      "reason": "SHS meningkatkan produktivitas pengguna di malam hari"
+    },
+    {
+      "term": "menerangi",
+      "weight": 1.3,
+      "category": "lighting_quality",
+      "reason": "Fungsi penerangan berjalan efektif"
+    },
+    {
+      "term": "meningkat",
+      "weight": 0.8,
+      "category": "improvement",
+      "reason": "Peningkatan kondisi secara umum; bobot rendah karena konteks bergantung"
+    },
+    {
+      "term": "terasa",
+      "weight": 0.6,
+      "category": "user_experience",
+      "reason": "Pengguna merasakan dampak; perlu konteks tambahan untuk polaritas penuh"
+    },
+    {
+      "term": "mendukung",
+      "weight": 1.1,
+      "category": "benefit",
+      "reason": "Sistem mendukung kegiatan harian pengguna"
+    },
+    {
+      "term": "memuaskan",
+      "weight": 1.5,
+      "category": "user_satisfaction",
+      "reason": "Ekspresi kepuasan tinggi pengguna"
+    },
+    {
+      "term": "ramah",
+      "weight": 1.0,
+      "category": "service_quality",
+      "reason": "Sikap teknisi atau petugas yang baik"
+    },
+    {
+      "term": "terjangkau",
+      "weight": 1.3,
+      "category": "cost_benefit",
+      "reason": "Biaya perawatan atau cicilan dinilai dapat dijangkau"
+    },
+    {
+      "term": "mengisi",
+      "weight": 0.7,
+      "category": "battery_function",
+      "reason": "Proses pengisian baterai berlangsung; netral-positif bergantung konteks"
+    },
+    {
+      "term": "terisi",
+      "weight": 1.2,
+      "category": "battery_function",
+      "reason": "Baterai berhasil terisi penuh atau memadai"
+    },
+    {
+      "term": "cerah",
+      "weight": 1.4,
+      "category": "lighting_quality",
+      "reason": "Intensitas cahaya lampu SHS yang baik"
+    },
+    {
+      "term": "optimal",
+      "weight": 1.4,
+      "category": "system_performance",
+      "reason": "Performa sistem berada di level terbaik"
+    },
+    {
+      "term": "rekomen",
+      "weight": 1.5,
+      "category": "user_recommendation",
+      "reason": "Rekomendasi informal pengguna kepada orang lain"
+    },
+    {
+      "term": "rekomendasi",
+      "weight": 1.5,
+      "category": "user_recommendation",
+      "reason": "Pengguna merekomendasikan SHS kepada orang lain"
+    },
+    {
+      "term": "berkualitas",
+      "weight": 1.4,
+      "category": "product_quality",
+      "reason": "Penilaian kualitas produk yang tinggi"
+    },
+    {
+      "term": "efisien",
+      "weight": 1.3,
+      "category": "system_performance",
+      "reason": "Sistem bekerja secara efisien dalam menggunakan energi surya"
+    },
+    {
+      "term": "terpenuhi",
+      "weight": 1.2,
+      "category": "benefit",
+      "reason": "Kebutuhan penerangan atau energi terpenuhi"
+    }
+  ],
+  "negative": [
+    {
+      "term": "rusak",
+      "weight": 1.8,
+      "category": "damage",
+      "reason": "Kegagalan fungsi perangkat SHS secara langsung"
+    },
+    {
+      "term": "mati",
+      "weight": 1.6,
+      "category": "device_failure",
+      "reason": "Sistem atau komponen tidak berfungsi sama sekali"
+    },
+    {
+      "term": "bocor",
+      "weight": 1.5,
+      "category": "physical_damage",
+      "reason": "Kebocoran baterai atau komponen merupakan kerusakan serius"
+    },
+    {
+      "term": "retak",
+      "weight": 1.4,
+      "category": "physical_damage",
+      "reason": "Kerusakan fisik panel atau komponen lain"
+    },
+    {
+      "term": "pecah",
+      "weight": 1.5,
+      "category": "physical_damage",
+      "reason": "Kerusakan fisik parah pada panel atau lampu"
+    },
+    {
+      "term": "drop",
+      "weight": 1.4,
+      "category": "battery_issue",
+      "reason": "Kapasitas baterai turun drastis; lazim dipakai pengguna SHS"
+    },
+    {
+      "term": "lemah",
+      "weight": 1.2,
+      "category": "performance_degradation",
+      "reason": "Daya atau cahaya yang dihasilkan lemah"
+    },
+    {
+      "term": "redup",
+      "weight": 1.3,
+      "category": "lighting_quality",
+      "reason": "Cahaya lampu kurang terang sehingga tidak memadai"
+    },
+    {
+      "term": "kecewa",
+      "weight": 1.5,
+      "category": "user_dissatisfaction",
+      "reason": "Ekspresi kekecewaan pengguna secara langsung"
+    },
+    {
+      "term": "lambat",
+      "weight": 1.1,
+      "category": "service_quality",
+      "reason": "Respons teknisi atau proses pemasangan yang lambat"
+    },
+    {
+      "term": "telat",
+      "weight": 1.1,
+      "category": "service_quality",
+      "reason": "Keterlambatan pengiriman atau pemasangan"
+    },
+    {
+      "term": "mahal",
+      "weight": 1.2,
+      "category": "cost_issue",
+      "reason": "Biaya dianggap terlalu tinggi oleh pengguna"
+    },
+    {
+      "term": "boros",
+      "weight": 1.3,
+      "category": "cost_issue",
+      "reason": "Konsumsi daya atau biaya operasional berlebih"
+    },
+    {
+      "term": "terbengkalai",
+      "weight": 1.6,
+      "category": "maintenance_neglect",
+      "reason": "Sistem tidak dirawat atau ditinggalkan tanpa perbaikan"
+    },
+    {
+      "term": "terabaikan",
+      "weight": 1.5,
+      "category": "maintenance_neglect",
+      "reason": "Kurangnya perhatian dari pihak program terhadap pengguna"
+    },
+    {
+      "term": "mengeluh",
+      "weight": 1.3,
+      "category": "user_dissatisfaction",
+      "reason": "Indikator adanya masalah yang dirasakan pengguna"
+    },
+    {
+      "term": "bermasalah",
+      "weight": 1.5,
+      "category": "technical_issue",
+      "reason": "Masalah teknis pada sistem SHS"
+    },
+    {
+      "term": "gangguan",
+      "weight": 1.3,
+      "category": "technical_issue",
+      "reason": "Gangguan pada fungsi sistem atau layanan"
+    },
+    {
+      "term": "terbakar",
+      "weight": 2.0,
+      "category": "safety_hazard",
+      "reason": "Insiden terbakar merupakan bahaya serius pada perangkat SHS"
+    },
+    {
+      "term": "korsleting",
+      "weight": 2.0,
+      "category": "safety_hazard",
+      "reason": "Korsleting listrik merupakan risiko keselamatan kritis"
+    },
+    {
+      "term": "tertipu",
+      "weight": 1.8,
+      "category": "trust_violation",
+      "reason": "Pengguna merasa ditipu atau dibohongi terkait program"
+    },
+    {
+      "term": "palsu",
+      "weight": 1.7,
+      "category": "product_authenticity",
+      "reason": "Produk atau suku cadang tidak asli"
+    },
+    {
+      "term": "abal-abal",
+      "weight": 1.8,
+      "category": "product_quality",
+      "reason": "Produk berkualitas rendah atau tidak terpercaya"
+    },
+    {
+      "term": "payah",
+      "weight": 1.4,
+      "category": "general_negative",
+      "reason": "Ekspresi informal ketidakpuasan kuat"
+    },
+    {
+      "term": "jelek",
+      "weight": 1.3,
+      "category": "general_negative",
+      "reason": "Penilaian umum negatif terhadap kualitas"
+    },
+    {
+      "term": "buruk",
+      "weight": 1.4,
+      "category": "general_negative",
+      "reason": "Penilaian umum negatif dengan intensitas tinggi"
+    },
+    {
+      "term": "ribet",
+      "weight": 1.1,
+      "category": "usability",
+      "reason": "Proses penggunaan atau pemasangan yang rumit"
+    },
+    {
+      "term": "susah",
+      "weight": 1.1,
+      "category": "usability",
+      "reason": "Kesulitan dalam penggunaan atau perawatan SHS"
+    },
+    {
+      "term": "gagal",
+      "weight": 1.5,
+      "category": "device_failure",
+      "reason": "Kegagalan sistem atau proses yang diharapkan"
+    },
+    {
+      "term": "padam",
+      "weight": 1.4,
+      "category": "device_failure",
+      "reason": "Lampu atau sistem padam tanpa alasan yang jelas"
+    },
+    {
+      "term": "habis",
+      "weight": 1.2,
+      "category": "battery_issue",
+      "reason": "Baterai habis sebelum waktunya atau tidak sesuai ekspektasi"
+    },
+    {
+      "term": "bengkak",
+      "weight": 1.6,
+      "category": "physical_damage",
+      "reason": "Baterai bengkak merupakan tanda kerusakan serius"
+    },
+    {
+      "term": "berkarat",
+      "weight": 1.3,
+      "category": "physical_damage",
+      "reason": "Komponen berkarat mengurangi fungsi dan umur perangkat"
+    },
+    {
+      "term": "kotor",
+      "weight": 0.9,
+      "category": "maintenance_issue",
+      "reason": "Panel kotor menurunkan efisiensi; bobot moderat karena mudah diperbaiki"
+    },
+    {
+      "term": "miring",
+      "weight": 1.0,
+      "category": "installation_defect",
+      "reason": "Pemasangan panel yang tidak rata menurunkan performa"
+    },
+    {
+      "term": "longgar",
+      "weight": 1.1,
+      "category": "installation_defect",
+      "reason": "Sambungan longgar menyebabkan risiko fungsi dan keamanan"
+    },
+    {
+      "term": "sia-sia",
+      "weight": 1.6,
+      "category": "futility",
+      "reason": "Pengguna merasa program atau perangkat tidak berguna"
+    },
+    {
+      "term": "menyesal",
+      "weight": 1.6,
+      "category": "user_dissatisfaction",
+      "reason": "Ekspresi penyesalan kuat atas penerimaan atau penggunaan SHS"
+    },
+    {
+      "term": "penipuan",
+      "weight": 1.9,
+      "category": "trust_violation",
+      "reason": "Tuduhan penipuan sangat negatif dan merusak kepercayaan program"
+    },
+    {
+      "term": "lemot",
+      "weight": 1.1,
+      "category": "service_quality",
+      "reason": "Respons atau proses yang sangat lambat; lazim dalam bahasa informal"
+    },
+    {
+      "term": "salah",
+      "weight": 1.0,
+      "category": "error",
+      "reason": "Kesalahan dalam pemasangan atau spesifikasi produk"
+    },
+    {
+      "term": "cacat",
+      "weight": 1.6,
+      "category": "product_defect",
+      "reason": "Produk memiliki cacat dari pabrik atau pengiriman"
+    }
+  ],
+  "neutral": [
+    {
+      "term": "dipasang",
+      "weight": 0.0,
+      "category": "installation_info",
+      "reason": "Menjelaskan kejadian pemasangan tanpa polaritas sentimen"
+    },
+    {
+      "term": "panel",
+      "weight": 0.0,
+      "category": "component_reference",
+      "reason": "Referensi komponen teknis tanpa nilai sentimen"
+    },
+    {
+      "term": "baterai",
+      "weight": 0.0,
+      "category": "component_reference",
+      "reason": "Referensi komponen teknis; sentimen ditentukan kata sekitarnya"
+    },
+    {
+      "term": "lampu",
+      "weight": 0.0,
+      "category": "component_reference",
+      "reason": "Referensi komponen tanpa sentimen"
+    },
+    {
+      "term": "watt",
+      "weight": 0.0,
+      "category": "technical_specification",
+      "reason": "Satuan teknis yang bersifat informatif"
+    },
+    {
+      "term": "volt",
+      "weight": 0.0,
+      "category": "technical_specification",
+      "reason": "Satuan teknis yang bersifat informatif"
+    },
+    {
+      "term": "teknisi",
+      "weight": 0.0,
+      "category": "personnel_reference",
+      "reason": "Referensi petugas tanpa evaluasi langsung"
+    },
+    {
+      "term": "program",
+      "weight": 0.0,
+      "category": "program_reference",
+      "reason": "Referensi program bantuan pemerintah tanpa penilaian"
+    },
+    {
+      "term": "bantuan",
+      "weight": 0.0,
+      "category": "program_reference",
+      "reason": "Referensi bantuan pemerintah; sentimen bergantung pada konteks"
+    },
+    {
+      "term": "instalasi",
+      "weight": 0.0,
+      "category": "installation_info",
+      "reason": "Proses teknis yang bersifat netral"
+    },
+    {
+      "term": "pemasangan",
+      "weight": 0.0,
+      "category": "installation_info",
+      "reason": "Referensi proses pemasangan tanpa evaluasi"
+    },
+    {
+      "term": "perawatan",
+      "weight": 0.0,
+      "category": "maintenance_info",
+      "reason": "Referensi kegiatan perawatan; nilai ditentukan konteks"
+    },
+    {
+      "term": "surya",
+      "weight": 0.0,
+      "category": "technology_reference",
+      "reason": "Referensi teknologi energi surya yang bersifat netral"
+    },
+    {
+      "term": "charger",
+      "weight": 0.0,
+      "category": "component_reference",
+      "reason": "Komponen pengisian daya tanpa sentimen"
+    },
+    {
+      "term": "kabel",
+      "weight": 0.0,
+      "category": "component_reference",
+      "reason": "Komponen fisik tanpa sentimen"
+    },
+    {
+      "term": "inverter",
+      "weight": 0.0,
+      "category": "component_reference",
+      "reason": "Komponen teknis tanpa sentimen"
+    },
+    {
+      "term": "controller",
+      "weight": 0.0,
+      "category": "component_reference",
+      "reason": "Komponen pengatur daya tanpa sentimen"
+    },
+    {
+      "term": "diterima",
+      "weight": 0.0,
+      "category": "distribution_info",
+      "reason": "Informasi penerimaan bantuan tanpa evaluasi"
+    },
+    {
+      "term": "pemerintah",
+      "weight": 0.0,
+      "category": "institution_reference",
+      "reason": "Referensi institusi; nilai bergantung pada konteks kalimat"
+    },
+    {
+      "term": "desa",
+      "weight": 0.0,
+      "category": "location_reference",
+      "reason": "Referensi lokasi yang bersifat informatif"
+    },
+    {
+      "term": "kapasitas",
+      "weight": 0.0,
+      "category": "technical_specification",
+      "reason": "Spesifikasi teknis yang bersifat informatif"
+    },
+    {
+      "term": "garansi",
+      "weight": 0.0,
+      "category": "warranty_reference",
+      "reason": "Referensi garansi; nilai ditentukan oleh apakah garansi dipenuhi atau tidak"
+    }
+  ]
+}

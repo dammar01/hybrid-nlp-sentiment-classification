@@ -375,15 +375,21 @@ class VisualizationService:
 
     @staticmethod
     def _rule_hit_counts(df: pl.DataFrame) -> Counter:
-        if "rule_hits" not in df.columns:
+        hit_columns = [
+            column
+            for column in ("rule_phrase_hits", "rule_word_hits", "rule_hits")
+            if column in df.columns
+        ]
+        if not hit_columns:
             return Counter()
 
         counter: Counter = Counter()
-        for raw_hits in df["rule_hits"].to_list():
-            for hit in str(raw_hits or "").split(","):
-                hit = hit.strip()
-                if hit:
-                    counter[hit] += 1
+        for column in hit_columns:
+            for raw_hits in df[column].to_list():
+                for hit in str(raw_hits or "").split(","):
+                    hit = hit.strip()
+                    if hit:
+                        counter[hit] += 1
         return counter
 
     @staticmethod
