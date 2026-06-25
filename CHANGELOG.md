@@ -80,3 +80,35 @@ Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/en/1.1.0/
 - Phrase_rules.json digunakan sebagai datasets kalimat utuh yang secara spesifik menggambarkan sentimen dari data yang di proses
 - 3 file ini akan digunakan sebagai source of truth dalam pemrosesan pipeline rule based
 - `rule_confidence` masih berupa heuristic berbasis dominasi skor, bukan probabilitas statistik.
+
+## [0.1.2] - 2026-06-25
+
+### Added
+
+- Output contract resmi untuk rule-based lexicon di `config.py` melalui `RULE_OUTPUT_COLUMNS`.
+- Kolom versi kontrak dan versi resource: `rule_contract_version` dan `rule_resource_version`.
+- Kolom evidence terstruktur `rule_evidence` untuk menyimpan detail hit dalam format JSON.
+- Konstanta rule-based lexicon di `config.py`, termasuk token pattern, status, effect modifier, threshold, dan bobot contrast/concession.
+- Jupyter notebook untuk melakukan analisis dataset yang telah dibuat
+
+### Changed
+
+- `LexiconSentimentService` sekarang memakai `config.RULE_TOKEN_PATTERN`, `RULE_WEAK_THRESHOLD`, status constants, dan effect constants.
+- Pipeline internal phrase dan word disatukan melalui proses evidence collection sebelum scoring final.
+- Output `analyze_text()` sekarang divalidasi terhadap `config.RULE_OUTPUT_COLUMNS`.
+- `VisualizationService` sekarang membaca kolom hit rule melalui konstanta `config`, bukan literal string.
+
+### Fixed
+
+- Resource validation diperketat untuk label, weight, term kosong, scope modifier, multiplier, dan effect contrast/negation.
+- Structured evidence menyimpan `source`, `score`, `weight`, `category`, `reason`, `span`, `modifiers`, dan `clause_weight` untuk setiap sentiment hit.
+
+### Removed
+
+-
+
+### Notes
+
+- Versi kontrak rule-based lexicon saat ini adalah `2.0.0`.
+- Versi resource default saat ini adalah `1.0.0` jika file JSON belum memiliki field `version`.
+- `rule_evidence` disimpan sebagai string JSON agar tetap kompatibel dengan output tabular Polars/CSV.

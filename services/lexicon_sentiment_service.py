@@ -17,7 +17,7 @@ import polars as pl
 
 import config
 
-_TOKEN_RE = re.compile(r"[A-Za-zÀ-ſ]+(?:['\-][A-Za-zÀ-ſ]+)*")
+_TOKEN_RE = re.compile(config.RULE_TOKEN_PATTERN)
 
 
 @dataclass(slots=True)
@@ -40,6 +40,7 @@ class _Hit:
     end: int
     score: float = 0.0
     modifiers: list[str] = field(default_factory=list)
+    clause_weight: float = 1.0
 
 
 @dataclass(slots=True)
@@ -49,10 +50,11 @@ class LexiconSentimentService:
     lexicon_words_path: str | Path = config.LEXICON_WORDS_PATH
     phrase_rules_path: str | Path = config.PHRASE_RULES_PATH
     modifier_rules_path: str | Path = config.MODIFIER_RULES_PATH
-    weak_threshold: float = 0.35
+    weak_threshold: float = config.RULE_WEAK_THRESHOLD
     word_rules: dict[str, dict[str, Any]] = field(init=False)
     phrase_rules: list[dict[str, Any]] = field(init=False)
     modifier_rules: dict[str, Any] = field(init=False)
+    resource_versions: dict[str, str] = field(init=False)
 
     def __post_init__(self) -> None:
         self.lexicon_words_path = Path(self.lexicon_words_path)
@@ -62,6 +64,11 @@ class LexiconSentimentService:
         self.word_rules = self._load_word_rules(self.lexicon_words_path)
         self.phrase_rules = self._load_phrase_rules(self.phrase_rules_path)
         self.modifier_rules = self._load_modifier_rules(self.modifier_rules_path)
+        self.resource_versions = {
+            "lexicon_words": self._resource_version(self.lexicon_words_path),
+            "phrase_rules": self._resource_version(self.phrase_rules_path),
+            "modifier_rules": self._resource_version(self.modifier_rules_path),
+        }
 
     # ------------------------------------------------------------------
     # Resource loading
@@ -74,6 +81,13 @@ class LexiconSentimentService:
         if not isinstance(data, dict):
             raise ValueError(f"Resource harus berupa object JSON: {path}")
         return data
+
+    def _resource_version(self, path: Path) -> str:
+        data = self._read_json(path)
+        version = data.get("version", config.RULE_RESOURCE_VERSION)
+        if not isinstance(version, str) or not version.strip():
+            raise ValueError(f"Version resource tidak valid di {path}: {version!r}")
+        return version.strip()
 
     def _load_word_rules(self, path: Path) -> dict[str, dict[str, Any]]:
         data = self._read_json(path)
@@ -91,6 +105,8 @@ class LexiconSentimentService:
                 term = str(item["term"]).strip().lower()
                 if not term:
                     continue
+                self._validate_label(label, path)
+                self._validate_weight(item["weight"], path, term)
                 rules[term] = {
                     "label": label,
                     "weight": float(item["weight"]),
@@ -114,8 +130,8 @@ class LexiconSentimentService:
                 label = str(item["label"]).strip().lower()
                 if not phrase:
                     continue
-                if label not in config.SENTIMENT_LABELS:
-                    raise ValueError(f"Label phrase tidak valid di {path}: {label}")
+                self._validate_label(label, path)
+                self._validate_weight(item["weight"], path, phrase)
                 rules.append(
                     {
                         "phrase": phrase,
@@ -131,6 +147,31 @@ class LexiconSentimentService:
         data = self._read_json(path)
         required_groups = ("negations", "intensifiers", "downtoners", "contrast_markers")
         self._require_groups(data, required_groups, path)
+        for item in data["negations"]:
+            self._require_fields(item, ("term", "scope", "effect", "reason"), path)
+            self._validate_term(item["term"], path)
+            self._validate_scope(item["scope"], path, item["term"])
+            if str(item["effect"]) not in (
+                config.RULE_EFFECT_INVERT,
+                config.RULE_EFFECT_WEAKEN,
+            ):
+                raise ValueError(f"Effect negation tidak valid di {path}: {item!r}")
+        for group in ("intensifiers", "downtoners"):
+            for item in data[group]:
+                self._require_fields(item, ("term", "multiplier", "reason"), path)
+                self._validate_term(item["term"], path)
+                self._validate_multiplier(item["multiplier"], path, item["term"])
+        for item in data["contrast_markers"]:
+            self._require_fields(item, ("term", "effect", "reason"), path)
+            self._validate_term(item["term"], path)
+            if str(item["effect"]) not in (
+                config.RULE_EFFECT_PREFER_AFTER_CLAUSE,
+                config.RULE_EFFECT_AMPLIFY_NEGATIVE_AFTER,
+                config.RULE_EFFECT_AMPLIFY_POSITIVE_AFTER,
+                config.RULE_EFFECT_SUBORDINATE_BEFORE_CLAUSE,
+                config.RULE_EFFECT_CONTRADICT_EXPECTATION,
+            ):
+                raise ValueError(f"Effect contrast tidak valid di {path}: {item!r}")
         return {
             "negations": {str(item["term"]).lower(): item for item in data["negations"]},
             "intensifiers": {
@@ -160,6 +201,36 @@ class LexiconSentimentService:
         if missing:
             raise ValueError(f"Field wajib hilang di {path}: {missing} pada {item!r}")
 
+    @staticmethod
+    def _validate_label(label: str, path: Path) -> None:
+        if label not in config.SENTIMENT_LABELS:
+            raise ValueError(f"Label rule tidak valid di {path}: {label}")
+
+    @staticmethod
+    def _validate_weight(raw_weight: Any, path: Path, term: str) -> None:
+        weight = float(raw_weight)
+        if weight < 0 or weight > 2:
+            raise ValueError(f"Weight rule di luar rentang 0..2 di {path}: {term}={weight}")
+
+    @staticmethod
+    def _validate_term(raw_term: Any, path: Path) -> None:
+        if not str(raw_term).strip():
+            raise ValueError(f"Term kosong tidak valid di {path}")
+
+    @staticmethod
+    def _validate_scope(raw_scope: Any, path: Path, term: Any) -> None:
+        scope = int(raw_scope)
+        if scope <= 0:
+            raise ValueError(f"Scope modifier harus positif di {path}: {term}={scope}")
+
+    @staticmethod
+    def _validate_multiplier(raw_multiplier: Any, path: Path, term: Any) -> None:
+        multiplier = float(raw_multiplier)
+        if multiplier <= 0:
+            raise ValueError(
+                f"Multiplier modifier harus positif di {path}: {term}={multiplier}"
+            )
+
     # ------------------------------------------------------------------
     # Analysis
     # ------------------------------------------------------------------
@@ -168,10 +239,7 @@ class LexiconSentimentService:
         normalized = original.lower()
         tokens = self._tokenize(normalized)
         clause_weights = self._clause_weights(normalized)
-
-        phrase_hits, consumed_spans = self._match_phrases(normalized, clause_weights)
-        word_hits, neutral_hits = self._match_words(tokens, consumed_spans, clause_weights)
-        hits = phrase_hits + word_hits
+        hits, neutral_hits = self._collect_evidence(normalized, tokens, clause_weights)
 
         positive_score = round(sum(hit.score for hit in hits if hit.score > 0), 4)
         negative_score = round(abs(sum(hit.score for hit in hits if hit.score < 0)), 4)
@@ -187,12 +255,14 @@ class LexiconSentimentService:
             label = "netral"
 
         if not hits:
-            status = "unknown"
+            status = config.RULE_STATUS_UNKNOWN
         elif confidence < self.weak_threshold:
-            status = "weak"
+            status = config.RULE_STATUS_WEAK
         else:
-            status = "detected"
+            status = config.RULE_STATUS_DETECTED
 
+        phrase_hits = [hit for hit in hits if hit.source == "phrase"]
+        word_hits = [hit for hit in hits if hit.source == "word"]
         phrase_terms = [hit.term for hit in phrase_hits]
         word_terms = [hit.term for hit in word_hits]
         all_hit_terms = phrase_terms + word_terms
@@ -210,22 +280,27 @@ class LexiconSentimentService:
             modifier_hits=modifier_terms,
         )
 
-        return {
+        result = {
+            config.COL_RULE_CONTRACT_VERSION: config.RULE_CONTRACT_VERSION,
+            config.COL_RULE_RESOURCE_VERSION: self._resource_version_label(),
             config.COL_RULE_LABEL: label,
-            "rule_score": score,
+            config.COL_RULE_SCORE: score,
             config.COL_RULE_CONFIDENCE: confidence,
-            "rule_status": status,
-            "rule_positive_score": positive_score,
-            "rule_negative_score": negative_score,
-            "rule_positive_count": sum(1 for hit in hits if hit.score > 0),
-            "rule_negative_count": sum(1 for hit in hits if hit.score < 0),
-            "rule_hits": ", ".join(all_hit_terms),
-            "rule_neutral_hits": ", ".join(neutral_hits),
-            "rule_phrase_hits": ", ".join(phrase_terms),
-            "rule_word_hits": ", ".join(word_terms),
-            "rule_modifier_hits": ", ".join(modifier_terms),
-            "rule_explanation": explanation,
+            config.COL_RULE_STATUS: status,
+            config.COL_RULE_POSITIVE_SCORE: positive_score,
+            config.COL_RULE_NEGATIVE_SCORE: negative_score,
+            config.COL_RULE_POSITIVE_COUNT: sum(1 for hit in hits if hit.score > 0),
+            config.COL_RULE_NEGATIVE_COUNT: sum(1 for hit in hits if hit.score < 0),
+            config.COL_RULE_HITS: ", ".join(all_hit_terms),
+            config.COL_RULE_NEUTRAL_HITS: ", ".join(neutral_hits),
+            config.COL_RULE_PHRASE_HITS: ", ".join(phrase_terms),
+            config.COL_RULE_WORD_HITS: ", ".join(word_terms),
+            config.COL_RULE_MODIFIER_HITS: ", ".join(modifier_terms),
+            config.COL_RULE_EVIDENCE: self._structured_evidence(hits, neutral_hits),
+            config.COL_RULE_EXPLANATION: explanation,
         }
+        self._validate_output_contract(result)
+        return result
 
     def analyze_dataframe(
         self, df: pl.DataFrame, text_column: str = config.COL_PROCESSED
@@ -244,6 +319,16 @@ class LexiconSentimentService:
             for index, match in enumerate(_TOKEN_RE.finditer(text))
         ]
 
+    def _collect_evidence(
+        self,
+        text: str,
+        tokens: list[_Token],
+        clause_weights: list[tuple[int, float]],
+    ) -> tuple[list[_Hit], list[str]]:
+        phrase_hits, consumed_spans = self._match_phrases(text, clause_weights)
+        word_hits, neutral_hits = self._match_words(tokens, consumed_spans, clause_weights)
+        return phrase_hits + word_hits, neutral_hits
+
     def _match_phrases(
         self, text: str, clause_weights: list[tuple[int, float]]
     ) -> tuple[list[_Hit], list[tuple[int, int]]]:
@@ -258,7 +343,8 @@ class LexiconSentimentService:
                 if self._overlaps(span, consumed):
                     continue
                 score = self._signed_score(rule["label"], rule["weight"])
-                score *= self._weight_at(span[0], clause_weights)
+                clause_weight = self._weight_at(span[0], clause_weights)
+                score *= clause_weight
                 hit = _Hit(
                     term=phrase,
                     label=rule["label"],
@@ -269,6 +355,7 @@ class LexiconSentimentService:
                     start=span[0],
                     end=span[1],
                     score=round(score, 4),
+                    clause_weight=clause_weight,
                 )
                 hits.append(hit)
                 consumed.append(span)
@@ -299,7 +386,8 @@ class LexiconSentimentService:
             score = self._signed_score(label, rule["weight"])
             modifiers = self._modifiers_for_token(token, tokens)
             score = self._apply_modifiers(score, modifiers)
-            score *= self._weight_at(token.start, clause_weights)
+            clause_weight = self._weight_at(token.start, clause_weights)
+            score *= clause_weight
 
             hits.append(
                 _Hit(
@@ -313,6 +401,7 @@ class LexiconSentimentService:
                     end=token.end,
                     score=round(score, 4),
                     modifiers=[item["term"] for item in modifiers],
+                    clause_weight=clause_weight,
                 )
             )
 
@@ -354,9 +443,9 @@ class LexiconSentimentService:
         adjusted = score
         for modifier in modifiers:
             effect = str(modifier.get("effect", ""))
-            if effect == "invert":
+            if effect == config.RULE_EFFECT_INVERT:
                 adjusted *= -1
-            elif effect == "weaken":
+            elif effect == config.RULE_EFFECT_WEAKEN:
                 adjusted *= 0.5
             if "multiplier" in modifier:
                 adjusted *= float(modifier["multiplier"])
@@ -371,18 +460,18 @@ class LexiconSentimentService:
             match = pattern.search(text)
             if not match:
                 continue
-            if effect == "prefer_after_clause":
-                weights.append((0, 0.75))
-                weights.append((match.end(), 1.25))
-            elif effect == "amplify_negative_after":
-                weights.append((match.end(), 1.2))
-            elif effect == "amplify_positive_after":
-                weights.append((match.end(), 1.2))
-            elif effect == "subordinate_before_clause":
-                weights.append((0, 0.85))
-                weights.append((match.end(), 1.15))
-            elif effect == "contradict_expectation":
-                weights.append((match.end(), 1.15))
+            if effect == config.RULE_EFFECT_PREFER_AFTER_CLAUSE:
+                weights.append((0, config.RULE_CONTRAST_BEFORE_WEIGHT))
+                weights.append((match.end(), config.RULE_CONTRAST_AFTER_WEIGHT))
+            elif effect == config.RULE_EFFECT_AMPLIFY_NEGATIVE_AFTER:
+                weights.append((match.end(), config.RULE_AMPLIFY_AFTER_WEIGHT))
+            elif effect == config.RULE_EFFECT_AMPLIFY_POSITIVE_AFTER:
+                weights.append((match.end(), config.RULE_AMPLIFY_AFTER_WEIGHT))
+            elif effect == config.RULE_EFFECT_SUBORDINATE_BEFORE_CLAUSE:
+                weights.append((0, config.RULE_CONCESSION_BEFORE_WEIGHT))
+                weights.append((match.end(), config.RULE_CONCESSION_AFTER_WEIGHT))
+            elif effect == config.RULE_EFFECT_CONTRADICT_EXPECTATION:
+                weights.append((match.end(), config.RULE_CONCESSION_AFTER_WEIGHT))
         return sorted(weights, key=lambda item: item[0])
 
     @staticmethod
@@ -421,6 +510,39 @@ class LexiconSentimentService:
                 seen.add(text)
                 result.append(text)
         return result
+
+    @staticmethod
+    def _validate_output_contract(result: dict[str, object]) -> None:
+        missing = [column for column in config.RULE_OUTPUT_COLUMNS if column not in result]
+        if missing:
+            raise RuntimeError(f"Output contract rule-based tidak lengkap: {missing}")
+
+    def _resource_version_label(self) -> str:
+        return ";".join(
+            f"{name}={version}" for name, version in self.resource_versions.items()
+        )
+
+    @staticmethod
+    def _structured_evidence(hits: list[_Hit], neutral_hits: list[str]) -> str:
+        payload: dict[str, Any] = {
+            "sentiment_hits": [
+                {
+                    "term": hit.term,
+                    "label": hit.label,
+                    "source": hit.source,
+                    "score": hit.score,
+                    "weight": hit.weight,
+                    "category": hit.category,
+                    "reason": hit.reason,
+                    "span": [hit.start, hit.end],
+                    "modifiers": hit.modifiers,
+                    "clause_weight": hit.clause_weight,
+                }
+                for hit in hits
+            ],
+            "neutral_hits": neutral_hits,
+        }
+        return json.dumps(payload, ensure_ascii=False)
 
     @staticmethod
     def _build_explanation(

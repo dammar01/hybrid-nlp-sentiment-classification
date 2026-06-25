@@ -54,6 +54,21 @@ COL_PROCESSED: str = "processed_text"
 COL_ACTUAL_LABEL: str = "actual_label"
 COL_RULE_LABEL: str = "rule_label"
 COL_RULE_CONFIDENCE: str = "rule_confidence"
+COL_RULE_CONTRACT_VERSION: str = "rule_contract_version"
+COL_RULE_RESOURCE_VERSION: str = "rule_resource_version"
+COL_RULE_SCORE: str = "rule_score"
+COL_RULE_STATUS: str = "rule_status"
+COL_RULE_POSITIVE_SCORE: str = "rule_positive_score"
+COL_RULE_NEGATIVE_SCORE: str = "rule_negative_score"
+COL_RULE_POSITIVE_COUNT: str = "rule_positive_count"
+COL_RULE_NEGATIVE_COUNT: str = "rule_negative_count"
+COL_RULE_HITS: str = "rule_hits"
+COL_RULE_NEUTRAL_HITS: str = "rule_neutral_hits"
+COL_RULE_PHRASE_HITS: str = "rule_phrase_hits"
+COL_RULE_WORD_HITS: str = "rule_word_hits"
+COL_RULE_MODIFIER_HITS: str = "rule_modifier_hits"
+COL_RULE_EVIDENCE: str = "rule_evidence"
+COL_RULE_EXPLANATION: str = "rule_explanation"
 COL_SEMANTIC_LABEL: str = "semantic_label"
 COL_SEMANTIC_SIMILARITY: str = "semantic_similarity"
 COL_CLUSTER_ID: str = "cluster_id"
@@ -78,3 +93,45 @@ SEMANTIC_SIMILARITY_BETA: float = 0.35
 EMBEDDING_DIMENSION: int = 128
 CLUSTER_SIMILARITY_THRESHOLD: float = 0.72
 MIN_CLUSTER_SIZE: int = 3
+
+# ---------------------------------------------------------------------------
+# Rule-based lexicon contract
+# ---------------------------------------------------------------------------
+RULE_CONTRACT_VERSION: str = "2.0.0"
+RULE_RESOURCE_VERSION: str = "1.0.0"
+RULE_WEAK_THRESHOLD: float = 0.35
+RULE_TOKEN_PATTERN: str = r"[A-Za-zÀ-ſ]+(?:['\-][A-Za-zÀ-ſ]+)*"
+RULE_STATUS_DETECTED: str = "detected"
+RULE_STATUS_WEAK: str = "weak"
+RULE_STATUS_UNKNOWN: str = "unknown"
+RULE_EFFECT_INVERT: str = "invert"
+RULE_EFFECT_WEAKEN: str = "weaken"
+RULE_EFFECT_PREFER_AFTER_CLAUSE: str = "prefer_after_clause"
+RULE_EFFECT_AMPLIFY_NEGATIVE_AFTER: str = "amplify_negative_after"
+RULE_EFFECT_AMPLIFY_POSITIVE_AFTER: str = "amplify_positive_after"
+RULE_EFFECT_SUBORDINATE_BEFORE_CLAUSE: str = "subordinate_before_clause"
+RULE_EFFECT_CONTRADICT_EXPECTATION: str = "contradict_expectation"
+RULE_CONTRAST_BEFORE_WEIGHT: float = 0.75
+RULE_CONTRAST_AFTER_WEIGHT: float = 1.25
+RULE_CONCESSION_BEFORE_WEIGHT: float = 0.85
+RULE_CONCESSION_AFTER_WEIGHT: float = 1.15
+RULE_AMPLIFY_AFTER_WEIGHT: float = 1.2
+RULE_OUTPUT_COLUMNS: tuple[str, ...] = (
+    COL_RULE_CONTRACT_VERSION,
+    COL_RULE_RESOURCE_VERSION,
+    COL_RULE_LABEL,
+    COL_RULE_SCORE,
+    COL_RULE_CONFIDENCE,
+    COL_RULE_STATUS,
+    COL_RULE_POSITIVE_SCORE,
+    COL_RULE_NEGATIVE_SCORE,
+    COL_RULE_POSITIVE_COUNT,
+    COL_RULE_NEGATIVE_COUNT,
+    COL_RULE_HITS,
+    COL_RULE_NEUTRAL_HITS,
+    COL_RULE_PHRASE_HITS,
+    COL_RULE_WORD_HITS,
+    COL_RULE_MODIFIER_HITS,
+    COL_RULE_EVIDENCE,
+    COL_RULE_EXPLANATION,
+)

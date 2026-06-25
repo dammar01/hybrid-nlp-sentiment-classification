@@ -377,7 +377,11 @@ class VisualizationService:
     def _rule_hit_counts(df: pl.DataFrame) -> Counter:
         hit_columns = [
             column
-            for column in ("rule_phrase_hits", "rule_word_hits", "rule_hits")
+            for column in (
+                config.COL_RULE_PHRASE_HITS,
+                config.COL_RULE_WORD_HITS,
+                config.COL_RULE_HITS,
+            )
             if column in df.columns
         ]
         if not hit_columns:
