@@ -1,0 +1,16 @@
+{
+  "version": "1.0.0",
+  "method": "SO-CAL-inspired lexicon rule engine",
+  "method_reference": "Taboada et al. 2011, Lexicon-Based Methods for Sentiment Analysis",
+  "score_scale": {
+    "base_min": -2.0,
+    "base_max": 2.0,
+    "aggregate_min": -3.0,
+    "aggregate_max": 3.0,
+    "max_abs": 3.0,
+    "description": "Base prior polarity is normalized from SO-CAL strength to 0..2 per lexical item. Aggregate document scores can exceed that range after modifiers, contrast weighting, negative weighting, and repetition weighting."
+  },
+  "negation_shift": 1.6,
+  "negative_weight": 1.5,
+  "repetition_weighting": true
+}

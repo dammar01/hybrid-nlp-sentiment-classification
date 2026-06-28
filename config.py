@@ -24,9 +24,10 @@ REPORTS: Path = OUTPUTS / "reports"
 # File kamus
 SLANG_DICT_PATH: Path = RESOURCES / "slang.json"
 NON_STANDARD_DICT_PATH: Path = RESOURCES / "non_standard.json"
-LEXICON_WORDS_PATH: Path = RESOURCES / "lexicon_words.json"
-PHRASE_RULES_PATH: Path = RESOURCES / "phrase_rules.json"
-MODIFIER_RULES_PATH: Path = RESOURCES / "modifier_rules.json"
+SOCAL_METADATA_PATH: Path = RESOURCES / "socal_metadata.json"
+SOCAL_WORD_RULES_PATH: Path = RESOURCES / "socal_word_rules.json"
+SOCAL_PHRASE_RULES_PATH: Path = RESOURCES / "socal_phrase_rules.json"
+SOCAL_MODIFIERS_PATH: Path = RESOURCES / "socal_modifiers.json"
 
 # Output artefak
 DATASET_SUMMARY_PATH: Path = ARTIFACTS / "dataset_summary.json"
@@ -104,6 +105,7 @@ RULE_TOKEN_PATTERN: str = r"[A-Za-zÀ-ſ]+(?:['\-][A-Za-zÀ-ſ]+)*"
 RULE_STATUS_DETECTED: str = "detected"
 RULE_STATUS_WEAK: str = "weak"
 RULE_STATUS_UNKNOWN: str = "unknown"
+RULE_EFFECT_SHIFT: str = "shift"
 RULE_EFFECT_INVERT: str = "invert"
 RULE_EFFECT_WEAKEN: str = "weaken"
 RULE_EFFECT_PREFER_AFTER_CLAUSE: str = "prefer_after_clause"
@@ -116,6 +118,9 @@ RULE_CONTRAST_AFTER_WEIGHT: float = 1.25
 RULE_CONCESSION_BEFORE_WEIGHT: float = 0.85
 RULE_CONCESSION_AFTER_WEIGHT: float = 1.15
 RULE_AMPLIFY_AFTER_WEIGHT: float = 1.2
+RULE_NEGATION_SHIFT: float = 1.6
+RULE_NEGATIVE_WEIGHT: float = 1.5
+RULE_NEUTRAL_CUTOFF: float = 0.15
 RULE_OUTPUT_COLUMNS: tuple[str, ...] = (
     COL_RULE_CONTRACT_VERSION,
     COL_RULE_RESOURCE_VERSION,

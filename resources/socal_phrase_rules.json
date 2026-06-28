@@ -1,0 +1,110 @@
+{
+  "version": "1.0.0",
+  "phrase_rules": [
+    {
+      "phrase": "sangat membantu",
+      "label": "positif",
+      "weight": 1.7,
+      "category": "strong_benefit",
+      "reason": "Multi-word positive expression takes precedence over word hits."
+    },
+    {
+      "phrase": "bisa menerangi rumah",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "lighting_success",
+      "reason": "Core SHS function is successful."
+    },
+    {
+      "phrase": "cahaya cukup terang",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "lighting_quality",
+      "reason": "Adequate lighting is a positive user assessment."
+    },
+    {
+      "phrase": "baterai tahan lama",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "battery_quality",
+      "reason": "Battery durability is a strong positive assessment."
+    },
+    {
+      "phrase": "tidak perlu beli minyak",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "cost_benefit",
+      "reason": "Domain-specific positive phrase where negation belongs inside the phrase."
+    },
+    {
+      "phrase": "tidak perlu minyak tanah",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "cost_benefit",
+      "reason": "Domain-specific positive phrase where negation belongs inside the phrase."
+    },
+    {
+      "phrase": "anak bisa belajar malam",
+      "label": "positif",
+      "weight": 1.9,
+      "category": "social_impact",
+      "reason": "Social benefit to education."
+    },
+    {
+      "phrase": "nyala sampai pagi",
+      "label": "positif",
+      "weight": 1.7,
+      "category": "battery_quality",
+      "reason": "Sufficient lighting duration."
+    },
+    {
+      "phrase": "baterai cepat habis",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "battery_quality",
+      "reason": "Multi-word negative expression takes precedence over separate words."
+    },
+    {
+      "phrase": "baterai cepat drop",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "battery_quality",
+      "reason": "Battery degradation is a strong negative assessment."
+    },
+    {
+      "phrase": "lampu sering mati",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "device_failure",
+      "reason": "Repeated lamp failure."
+    },
+    {
+      "phrase": "lampu tidak mau nyala",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "device_failure",
+      "reason": "Negated function is encoded as a negative multi-word expression."
+    },
+    {
+      "phrase": "panel rusak",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "panel_condition",
+      "reason": "Panel damage."
+    },
+    {
+      "phrase": "teknisi tidak datang",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "service_quality",
+      "reason": "Failed service follow-up."
+    },
+    {
+      "phrase": "tidak ada perawatan",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "maintenance",
+      "reason": "Lack of maintenance support."
+    }
+  ]
+}

@@ -28,6 +28,23 @@
     "Pontianak",
     "Singkawang"
   ],
+  "location_aliases": {
+    "Kalimantan Barat": ["Kalbar", "Provinsi Kalimantan Barat", "Provinsi Kalbar"],
+    "Bengkayang": ["Kabupaten Bengkayang", "Pulau Lemukutan", "Lemukutan"],
+    "Kapuas Hulu": ["Kabupaten Kapuas Hulu", "Putussibau", "Nanga Badau"],
+    "Kayong Utara": ["Kabupaten Kayong Utara", "Sukadana"],
+    "Ketapang": ["Kabupaten Ketapang"],
+    "Kubu Raya": ["Kabupaten Kubu Raya", "Rasau Jaya"],
+    "Landak": ["Kabupaten Landak", "Ngabang"],
+    "Melawi": ["Kabupaten Melawi", "Nanga Pinoh"],
+    "Mempawah": ["Kabupaten Mempawah"],
+    "Sambas": ["Kabupaten Sambas", "Pemangkat", "Tebas"],
+    "Sanggau": ["Kabupaten Sanggau", "Entikong"],
+    "Sekadau": ["Kabupaten Sekadau", "Sekadau Hilir"],
+    "Sintang": ["Kabupaten Sintang"],
+    "Pontianak": ["Kota Pontianak"],
+    "Singkawang": ["Kota Singkawang"]
+  },
   "topic_groups": {
     "household_solar": [
       "Solar Home System",

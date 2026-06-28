@@ -1,0 +1,180 @@
+{
+  "version": "1.0.0",
+  "word_rules": [
+    {
+      "term": "membantu",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "benefit",
+      "reason": "Direct benefit felt by SHS users."
+    },
+    {
+      "term": "terang",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "lighting_quality",
+      "reason": "Core positive function of lighting quality."
+    },
+    {
+      "term": "bagus",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "general_evaluation",
+      "reason": "General positive prior polarity."
+    },
+    {
+      "term": "baik",
+      "label": "positif",
+      "weight": 1.1,
+      "category": "general_evaluation",
+      "reason": "General positive prior polarity."
+    },
+    {
+      "term": "puas",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "user_satisfaction",
+      "reason": "Explicit user satisfaction."
+    },
+    {
+      "term": "bersyukur",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "user_satisfaction",
+      "reason": "Strong gratitude and satisfaction expression."
+    },
+    {
+      "term": "hemat",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "cost_benefit",
+      "reason": "Positive economic impact of SHS usage."
+    },
+    {
+      "term": "gratis",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "cost_benefit",
+      "reason": "Aid received without direct cost is generally positive."
+    },
+    {
+      "term": "nyala",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "device_function",
+      "reason": "Device or lamp is functioning."
+    },
+    {
+      "term": "berfungsi",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "device_function",
+      "reason": "Device runs according to its intended function."
+    },
+    {
+      "term": "lancar",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "system_performance",
+      "reason": "System works without obstacle."
+    },
+    {
+      "term": "awet",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "durability",
+      "reason": "Durability is a strong positive evaluation for SHS components."
+    },
+    {
+      "term": "ramah",
+      "label": "positif",
+      "weight": 1.0,
+      "category": "service_quality",
+      "reason": "Positive service attitude."
+    },
+    {
+      "term": "cepat",
+      "label": "positif",
+      "weight": 0.8,
+      "category": "service_quality",
+      "reason": "Positive when used for response or service speed."
+    },
+    {
+      "term": "rusak",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "device_failure",
+      "reason": "Device damage is a strong negative prior polarity."
+    },
+    {
+      "term": "buruk",
+      "label": "negatif",
+      "weight": 1.2,
+      "category": "general_evaluation",
+      "reason": "General negative prior polarity."
+    },
+    {
+      "term": "mati",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "device_failure",
+      "reason": "Lamp or system not operating."
+    },
+    {
+      "term": "redup",
+      "label": "negatif",
+      "weight": 1.3,
+      "category": "lighting_quality",
+      "reason": "Poor lighting output."
+    },
+    {
+      "term": "habis",
+      "label": "negatif",
+      "weight": 1.0,
+      "category": "battery_quality",
+      "reason": "Battery or stored energy depleted."
+    },
+    {
+      "term": "drop",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "battery_quality",
+      "reason": "Battery performance declines sharply."
+    },
+    {
+      "term": "mahal",
+      "label": "negatif",
+      "weight": 1.2,
+      "category": "cost_burden",
+      "reason": "Cost burden is negative in SHS adoption."
+    },
+    {
+      "term": "lambat",
+      "label": "negatif",
+      "weight": 1.0,
+      "category": "service_quality",
+      "reason": "Slow response or service is negative."
+    },
+    {
+      "term": "sulit",
+      "label": "negatif",
+      "weight": 1.0,
+      "category": "accessibility",
+      "reason": "Difficulty or access barrier."
+    },
+    {
+      "term": "retak",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "panel_condition",
+      "reason": "Physical damage to panel."
+    },
+    {
+      "term": "kecewa",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "user_satisfaction",
+      "reason": "Explicit dissatisfaction."
+    }
+  ]
+}

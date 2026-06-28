@@ -11,7 +11,7 @@ import json
 import logging
 import re
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 import polars as pl
 
@@ -192,7 +192,6 @@ class DatasetService:
         self,
         records_df: pl.DataFrame,
         research_config: dict,
-        max_text_chars: int = 260,
     ) -> pl.DataFrame:
         rows: list[dict] = []
         if records_df.is_empty():
@@ -203,7 +202,6 @@ class DatasetService:
                 index=index,
                 row=row,
                 research_config=research_config,
-                max_text_chars=max_text_chars,
             )
             rows.append(candidate)
 
@@ -218,16 +216,26 @@ class DatasetService:
         index: int,
         row: dict,
         research_config: dict,
-        max_text_chars: int,
     ) -> dict:
         raw_text = str(row.get("content_text") or "")
-        title = str(row.get("content_title") or row.get("raw_title") or "")
+        content_title = str(row.get("content_title") or "")
+        raw_title = str(row.get("raw_title") or "")
         snippet = str(row.get("snippet") or "")
         description = str(row.get("content_description") or "")
-        combined = " ".join([title, snippet, description, raw_text])
         domain = str(row.get("domain") or "")
         source_url = str(row.get("canonical_url") or row.get("url") or "")
         content_status = str(row.get("content_status") or "")
+        cleaned_raw_text = self._clean_content_text(raw_text, source_url)
+        url_title = self._title_from_url(source_url)
+        text = self._candidate_text(
+            content_title=content_title,
+            raw_title=raw_title,
+            snippet=snippet,
+            description=description,
+            url_title=url_title,
+            raw_text=cleaned_raw_text,
+        )
+        combined = text
 
         is_success = content_status == "success" and bool(raw_text.strip())
         is_excluded_domain = self._matches_domain(
@@ -237,13 +245,12 @@ class DatasetService:
             domain, source_url, research_config.get("social_domains", [])
         )
         is_relevant = self._contains_any(
-            " ".join([source_url, title, snippet, description, raw_text[:2000]]),
+            " ".join([source_url, text, cleaned_raw_text[:2000]]),
             research_config.get("url_required_keywords", []),
         )
-        location = self._first_matching_term(
-            combined,
-            list(research_config.get("known_entities", []))
-            + list(research_config.get("locations", [])),
+        location = self._infer_location(
+            [combined, str(row.get("query") or ""), source_url],
+            research_config,
         )
         aspect = self._infer_aspect(combined, research_config)
         source_type = self._infer_source_type(domain, source_url, is_social)
@@ -261,7 +268,6 @@ class DatasetService:
             inclusion_status = "review_required_before_core"
             corpus_role = "contextual_evidence"
 
-        text = self._candidate_text(raw_text, title, snippet, max_text_chars)
         support_score = self._evidence_support_score(
             is_success=is_success,
             is_relevant=is_relevant,
@@ -303,7 +309,7 @@ class DatasetService:
             "content_status": content_status,
             "query_group": row.get("query_group") or "",
             "query": row.get("query") or "",
-            "raw_title": title,
+            "raw_title": raw_title or content_title,
             "raw_text_length": int(row.get("content_text_length") or 0),
         }
         return final_row
@@ -342,6 +348,77 @@ class DatasetService:
         if not matches:
             return ""
         return max(matches, key=len)
+
+    @classmethod
+    def _infer_location(cls, texts: list[str], research_config: dict) -> str:
+        location_terms = cls._location_terms(research_config)
+        specific_terms = [term for term in location_terms if not term[2]]
+        province_terms = [term for term in location_terms if term[2]]
+
+        for text in texts:
+            location = cls._first_matching_location(text, specific_terms)
+            if location:
+                return location
+        for text in texts:
+            location = cls._first_matching_location(text, province_terms)
+            if location:
+                return location
+        return ""
+
+    @staticmethod
+    def _location_terms(research_config: dict) -> list[tuple[str, str, bool]]:
+        terms: dict[str, str] = {}
+        primary_location = str(research_config.get("primary_location") or "").strip()
+
+        for canonical, aliases in (
+            research_config.get("location_aliases") or {}
+        ).items():
+            canonical_text = str(canonical).strip()
+            if not canonical_text:
+                continue
+            terms.setdefault(canonical_text.casefold(), canonical_text)
+            if not isinstance(aliases, list):
+                continue
+            for alias in aliases:
+                alias_text = str(alias).strip()
+                if alias_text:
+                    terms.setdefault(alias_text.casefold(), canonical_text)
+
+        for location in research_config.get("locations") or []:
+            location_text = str(location).strip()
+            if location_text:
+                terms.setdefault(location_text.casefold(), location_text)
+
+        for entity in research_config.get("known_entities") or []:
+            entity_text = str(entity).strip()
+            if entity_text:
+                terms.setdefault(entity_text.casefold(), entity_text)
+
+        return sorted(
+            (
+                (
+                    alias,
+                    canonical,
+                    bool(primary_location)
+                    and canonical.casefold() == primary_location.casefold(),
+                )
+                for alias, canonical in terms.items()
+            ),
+            key=lambda item: len(item[0]),
+            reverse=True,
+        )
+
+    @staticmethod
+    def _first_matching_location(
+        text: str, location_terms: list[tuple[str, str, bool]]
+    ) -> str:
+        normalized = str(text or "").casefold()
+        if not normalized:
+            return ""
+        for alias, canonical, _is_primary_scope in location_terms:
+            if alias in normalized:
+                return canonical
+        return ""
 
     @staticmethod
     def _matches_domain(domain: str, url: str, patterns: list[str]) -> bool:
@@ -406,16 +483,107 @@ class DatasetService:
             return "stakeholder_opinion"
         return "public_opinion"
 
-    @staticmethod
+    @classmethod
     def _candidate_text(
-        raw_text: str, title: str, snippet: str, max_text_chars: int
+        cls,
+        *,
+        content_title: str,
+        raw_title: str,
+        snippet: str,
+        description: str,
+        url_title: str,
+        raw_text: str,
     ) -> str:
-        source = raw_text.strip() or snippet.strip() or title.strip()
-        source = re.sub(r"\s+", " ", source)
-        if len(source) <= max_text_chars:
-            return source
-        trimmed = source[:max_text_chars].rsplit(" ", 1)[0].strip()
-        return trimmed or source[:max_text_chars].strip()
+        segments = [
+            content_title,
+            raw_title,
+            snippet,
+            description,
+            url_title,
+            raw_text,
+        ]
+        return " ".join(cls._unique_text_segments(segments))
+
+    @classmethod
+    def _unique_text_segments(cls, segments: list[str]) -> list[str]:
+        unique: list[str] = []
+        seen: set[str] = set()
+        for segment in segments:
+            normalized = cls._normalize_text(segment)
+            if not normalized:
+                continue
+            key = normalized.casefold()
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(normalized)
+        return unique
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        return re.sub(r"\s+", " ", str(text or "")).strip()
+
+    @classmethod
+    def _clean_content_text(cls, raw_text: str, source_url: str) -> str:
+        text = cls._normalize_text(raw_text)
+        if not text:
+            return ""
+
+        normalized = text.casefold()
+        compact = re.sub(r"\s+", "", normalized)
+        domain = urlparse(source_url).netloc.casefold()
+
+        instagram_patterns = (
+            "loginsignupnevermissapostfrom",
+            "signupforinstagramtostayintheloop",
+            "masukdaftarjanganpernahlewatkanpostingan",
+            "post isn't available",
+            "the link may be broken, or the profile may have been removed",
+            "see everyday moments from your close friends",
+            "log into instagram",
+        )
+        tiktok_patterns = (
+            "drag the slider to fit the puzzle",
+            "access to www.tiktok.com was denied",
+            "you don't have authorization to view this page",
+        )
+
+        if "instagram.com" in domain and len(text) <= 1_200:
+            if any(
+                pattern in compact or pattern in normalized
+                for pattern in instagram_patterns
+            ):
+                return ""
+        if "tiktok.com" in domain and len(text) <= 800:
+            if any(pattern in normalized for pattern in tiktok_patterns):
+                return ""
+        return text
+
+    @classmethod
+    def _title_from_url(cls, source_url: str) -> str:
+        parsed = urlparse(source_url)
+        path_parts = [
+            unquote(part).strip()
+            for part in parsed.path.split("/")
+            if unquote(part).strip()
+        ]
+        if not path_parts:
+            return ""
+
+        if "instagram.com" in parsed.netloc.casefold() and len(path_parts) >= 2:
+            return cls._normalize_url_title(" ".join(path_parts[:2]))
+        if "tiktok.com" in parsed.netloc.casefold():
+            relevant_parts = [
+                part for part in path_parts if part not in ("video", "photo")
+            ]
+            return cls._normalize_url_title(" ".join(relevant_parts or path_parts))
+        return cls._normalize_url_title(" ".join(path_parts[-2:]))
+
+    @staticmethod
+    def _normalize_url_title(text: str) -> str:
+        text = re.sub(r"[_-]+", " ", text)
+        text = re.sub(r"\s+", " ", text)
+        return text.strip()
 
     @staticmethod
     def _evidence_support_score(

@@ -1,0 +1,198 @@
+{
+  "version": "1.0.0",
+  "modifiers": {
+    "negations": [
+      {
+        "term": "tidak",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "SO-CAL-style shift negation instead of polarity flip."
+      },
+      {
+        "term": "tak",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "Short formal negation."
+      },
+      {
+        "term": "bukan",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "Nominal negation."
+      },
+      {
+        "term": "belum",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "Unrealized state weakens or shifts the orientation."
+      },
+      {
+        "term": "tanpa",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "Prepositional negation."
+      },
+      {
+        "term": "gak",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "Informal Indonesian negation."
+      },
+      {
+        "term": "nggak",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "Informal Indonesian negation."
+      },
+      {
+        "term": "ga",
+        "scope": 3,
+        "effect": "shift",
+        "reason": "Informal Indonesian negation."
+      }
+    ],
+    "intensifiers": [
+      {
+        "term": "sangat",
+        "multiplier": 1.25,
+        "reason": "Equivalent to SO-CAL percentage amplifier around +25%."
+      },
+      {
+        "term": "banget",
+        "multiplier": 1.25,
+        "reason": "Informal strong amplifier."
+      },
+      {
+        "term": "sekali",
+        "multiplier": 1.25,
+        "reason": "Post-adjectival amplifier."
+      },
+      {
+        "term": "amat",
+        "multiplier": 1.25,
+        "reason": "Formal amplifier."
+      },
+      {
+        "term": "benar-benar",
+        "multiplier": 1.4,
+        "reason": "Strong assertion amplifier."
+      },
+      {
+        "term": "total",
+        "multiplier": 1.5,
+        "reason": "High-intensity amplifier."
+      },
+      {
+        "term": "parah",
+        "multiplier": 1.4,
+        "reason": "Informal high-intensity amplifier, often negative."
+      }
+    ],
+    "downtoners": [
+      {
+        "term": "agak",
+        "multiplier": 0.7,
+        "reason": "SO-CAL-style downtoner."
+      },
+      {
+        "term": "sedikit",
+        "multiplier": 0.6,
+        "reason": "Strong downtoner."
+      },
+      {
+        "term": "cukup",
+        "multiplier": 0.8,
+        "reason": "Adequacy marker that weakens extreme polarity."
+      },
+      {
+        "term": "lumayan",
+        "multiplier": 0.8,
+        "reason": "Moderate positive or weak evaluation."
+      },
+      {
+        "term": "kurang",
+        "multiplier": 0.7,
+        "reason": "Downtoner before positive words."
+      }
+    ],
+    "irrealis_blockers": [
+      {
+        "term": "mungkin",
+        "scope": 3,
+        "reason": "Irrealis or uncertainty marker blocks factual sentiment."
+      },
+      {
+        "term": "sepertinya",
+        "scope": 3,
+        "reason": "Uncertainty marker."
+      },
+      {
+        "term": "kayaknya",
+        "scope": 3,
+        "reason": "Informal uncertainty marker."
+      },
+      {
+        "term": "jika",
+        "scope": 4,
+        "reason": "Conditional marker."
+      },
+      {
+        "term": "kalau",
+        "scope": 4,
+        "reason": "Conditional marker."
+      },
+      {
+        "term": "andaikan",
+        "scope": 4,
+        "reason": "Counterfactual marker."
+      },
+      {
+        "term": "semoga",
+        "scope": 4,
+        "reason": "Wish marker, not factual evaluation."
+      }
+    ],
+    "contrast_markers": [
+      {
+        "term": "tapi",
+        "effect": "prefer_after_clause",
+        "reason": "The clause after contrast is usually more salient."
+      },
+      {
+        "term": "tetapi",
+        "effect": "prefer_after_clause",
+        "reason": "Formal contrast marker."
+      },
+      {
+        "term": "namun",
+        "effect": "prefer_after_clause",
+        "reason": "Formal contrast marker."
+      },
+      {
+        "term": "meski",
+        "effect": "subordinate_before_clause",
+        "reason": "Concessive marker."
+      },
+      {
+        "term": "meskipun",
+        "effect": "subordinate_before_clause",
+        "reason": "Concessive marker."
+      },
+      {
+        "term": "walaupun",
+        "effect": "subordinate_before_clause",
+        "reason": "Concessive marker."
+      },
+      {
+        "term": "sayangnya",
+        "effect": "amplify_negative_after",
+        "reason": "Explicit transition to negative evaluation."
+      },
+      {
+        "term": "untungnya",
+        "effect": "amplify_positive_after",
+        "reason": "Explicit transition to positive evaluation."
+      }
+    ]
+  }
+}
