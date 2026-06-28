@@ -26,25 +26,7 @@
     "Sekadau",
     "Sintang",
     "Pontianak",
-    "Singkawang",
-    "Entikong",
-    "Aruk",
-    "Badau",
-    "Temajuk",
-    "Paloh",
-    "Puring Kencana",
-    "Lanjak",
-    "Nanga Badau",
-    "Putussibau",
-    "Nanga Pinoh",
-    "Nanga Tayap",
-    "Sukadana",
-    "Teluk Batang",
-    "Kendawangan",
-    "Pulau Karimata",
-    "Pulau Maya",
-    "Pulau Lemukutan",
-    "Pulau Randayan"
+    "Singkawang"
   ],
   "topic_groups": {
     "household_solar": [
@@ -86,24 +68,9 @@
       "PLTS interkoneksi jaringan",
       "PLTS rooftop industri"
     ],
-    "other_renewables": [
-      "energi terbarukan",
-      "energi baru terbarukan",
-      "EBT",
-      "PLTMH",
-      "mikrohidro",
-      "micro hydro",
-      "PLTA mini",
-      "PLTB angin",
-      "turbin angin kecil",
-      "biogas",
-      "biomassa",
-      "PLTS dan PLTMH"
-    ],
     "electricity_access": [
       "listrik desa",
       "elektrifikasi",
-      "rasio elektrifikasi",
       "desa belum berlistrik",
       "akses listrik",
       "perluasan jaringan listrik",
@@ -115,17 +82,11 @@
       "desa tanpa listrik PLN"
     ],
     "technical": [
-      "panel surya monocrystalline",
-      "panel surya polycrystalline",
-      "baterai surya",
-      "baterai lithium surya",
       "inverter surya",
-      "charge controller MPPT",
       "kapasitas watt panel surya",
       "sistem penyimpanan energi",
       "BESS baterai surya",
-      "instalasi panel surya",
-      "off-grid system komponen"
+      "instalasi panel surya"
     ],
     "government_program": [
       "program listrik desa",
@@ -182,17 +143,6 @@
       "kurang daya",
       "tegangan tidak stabil",
       "tidak ada teknisi"
-    ],
-    "policy": [
-      "kebijakan energi",
-      "regulasi PLTS",
-      "RUPTL",
-      "RUED Kalimantan Barat",
-      "target EBT nasional",
-      "Perpres energi terbarukan",
-      "Permen ESDM PLTS",
-      "kebijakan net metering",
-      "Pergub energi Kalbar"
     ],
     "funding": [
       "hibah panel surya",
@@ -274,41 +224,6 @@
     "inurl:jurnal",
     "filetype:pdf"
   ],
-  "social_domains": ["youtube.com/watch", "facebook.com", "instagram.com", "tiktok.com", "twitter.com", "x.com"],
-  "known_entities": [
-    "Pulau Lemukutan",
-    "Dusun Melabo",
-    "Desa Temajuk",
-    "Desa Temajok",
-    "Desa Jasa",
-    "Pulau Limbung",
-    "Desa Sepok Keladi",
-    "Desa Togan Baru",
-    "Desa Merabu Jaya",
-    "Pulau Meledang",
-    "Dusun Molo",
-    "Desa Gonis Tekam",
-    "Dusun Permit",
-    "Desa Camar Bulan",
-    "Desa Suruh Tembawang",
-    "Desa Nanga Raun",
-    "Desa Puring Kencana",
-    "Desa Badau Kapuas Hulu",
-    "Desa Lanjak Kapuas Hulu",
-    "Pulau Karimata Kayong Utara",
-    "Pulau Maya Kayong Utara",
-    "Desa Tanjung Satai",
-    "Desa Teluk Batang",
-    "Pulau Penata Besar",
-    "Pulau Randayan",
-    "Desa Long Apari",
-    "Desa Nanga Sirin",
-    "Desa Bunut Hulu",
-    "Desa Kalis",
-    "Desa Kendawangan",
-    "Desa Marau Ketapang",
-    "Desa Nanga Tayap"
-  ],
   "excluded_domains": [
     "shopee.co.id",
     "tokopedia.com",
@@ -323,22 +238,6 @@
     "pinterest.com",
     "slideshare.net",
     "kaskus.co.id"
-  ],
-  "tracking_params": [
-    "utm_source",
-    "utm_medium",
-    "utm_campaign",
-    "utm_term",
-    "utm_content",
-    "fbclid",
-    "gclid",
-    "ref",
-    "source",
-    "mc_cid",
-    "mc_eid",
-    "_ga",
-    "trk",
-    "igshid"
   ],
   "url_required_keywords": [
     "panel surya",
@@ -362,8 +261,6 @@
     "kelistrikan",
     "elektrifikasi",
     "rasio elektrifikasi",
-    "off-grid",
-    "on-grid",
     "net metering",
     "elektrifikasi desa",
     "desa berlistrik",
