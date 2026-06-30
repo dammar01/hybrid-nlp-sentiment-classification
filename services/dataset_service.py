@@ -7,6 +7,7 @@ sesuai rancangan tugas akhir.
 
 from __future__ import annotations
 
+import csv
 import json
 import logging
 import re
@@ -39,6 +40,12 @@ V1_SHS_DATASET_COLUMNS: tuple[str, ...] = (
     "evidence_support_score",
     "parent_text_id",
     "decision_note",
+)
+
+CANDIDATE_COMBINATION_COLUMNS: tuple[str, ...] = (
+    "source_type",
+    "aspect",
+    "dataset_tier",
 )
 
 
@@ -211,6 +218,164 @@ class DatasetService:
     def v1_dataset_columns() -> tuple[str, ...]:
         return V1_SHS_DATASET_COLUMNS
 
+    @staticmethod
+    def candidate_combination_columns() -> tuple[str, ...]:
+        return CANDIDATE_COMBINATION_COLUMNS
+
+    def build_candidate_labeling_dataset(
+        self,
+        candidate_df: pl.DataFrame,
+        max_rows_per_value: int = 10,
+    ) -> pl.DataFrame:
+        """Ambil kandidat siap labeling per nilai unik tiap kolom kombinasi."""
+        if candidate_df.is_empty():
+            return candidate_df
+        if max_rows_per_value <= 0:
+            return pl.DataFrame()
+
+        eligible_df = self.filter_labeling_ready_candidates(candidate_df)
+        if eligible_df.is_empty():
+            return eligible_df
+
+        groups = self._candidate_labeling_groups(eligible_df)
+        ordered_keys = sorted(groups, key=lambda key: (len(groups[key]), key[0], key[1]))
+        sorted_rows_by_key = {
+            key: sorted(rows, key=self._candidate_labeling_sort_key)
+            for key, rows in groups.items()
+        }
+
+        selected: list[dict] = []
+        blacklisted_ids: set[str] = set()
+        for column, value in ordered_keys:
+            selected_count = 0
+            for row in sorted_rows_by_key[(column, value)]:
+                selection_id = self._candidate_selection_id(row, len(selected))
+                if selection_id in blacklisted_ids:
+                    continue
+                selected_row = {
+                    **row,
+                    "labeling_bucket_column": column,
+                    "labeling_bucket_value": value,
+                }
+                selected.append(selected_row)
+                blacklisted_ids.add(selection_id)
+                selected_count += 1
+                if selected_count >= max_rows_per_value:
+                    break
+
+        if not selected:
+            return pl.DataFrame()
+        return pl.from_dicts(selected, strict=False)
+
+    def _candidate_labeling_groups(
+        self,
+        eligible_df: pl.DataFrame,
+    ) -> dict[tuple[str, str], list[dict]]:
+        groups: dict[tuple[str, str], list[dict]] = {}
+        for row in eligible_df.iter_rows(named=True):
+            for column in CANDIDATE_COMBINATION_COLUMNS:
+                value = str(row.get(column) or "").strip()
+                if value:
+                    groups.setdefault((column, value), []).append(row)
+        return groups
+
+    def filter_labeling_ready_candidates(self, candidate_df: pl.DataFrame) -> pl.DataFrame:
+        """Saring kandidat yang punya lokasi Kalbar spesifik dari text atau query."""
+        if candidate_df.is_empty():
+            return candidate_df
+        required = {
+            *CANDIDATE_COMBINATION_COLUMNS,
+            "text",
+            "location",
+            "location_source",
+            "is_specific_location",
+        }
+        missing = required.difference(candidate_df.columns)
+        if missing:
+            raise ValueError(f"Kolom kandidat siap labeling belum lengkap: {sorted(missing)}")
+
+        return candidate_df.filter(
+            pl.col("dataset_tier").is_not_null()
+            & (pl.col("dataset_tier").str.strip_chars().str.len_chars() > 0)
+            & pl.col("source_type").is_not_null()
+            & (pl.col("source_type").str.strip_chars().str.len_chars() > 0)
+            & pl.col("aspect").is_not_null()
+            & (pl.col("aspect").str.strip_chars().str.len_chars() > 0)
+            & pl.col("text").is_not_null()
+            & (pl.col("text").str.strip_chars().str.len_chars() > 0)
+            & pl.col("location").is_not_null()
+            & (pl.col("location").str.strip_chars().str.len_chars() > 0)
+            & (pl.col("is_specific_location") == True)
+            & pl.col("location_source").is_in(["text", "query"])
+        )
+
+    def summarize_candidate_combinations(self, candidate_df: pl.DataFrame) -> pl.DataFrame:
+        if candidate_df.is_empty():
+            return pl.DataFrame()
+        missing = [
+            column
+            for column in CANDIDATE_COMBINATION_COLUMNS
+            if column not in candidate_df.columns
+        ]
+        if missing:
+            raise ValueError(f"Kolom kombinasi kandidat belum lengkap: {missing}")
+
+        rows: list[dict] = []
+        for column in CANDIDATE_COMBINATION_COLUMNS:
+            grouped = (
+                candidate_df.group_by(column)
+                .agg(pl.len().alias("jumlah"))
+                .sort(column)
+            )
+            for row in grouped.iter_rows(named=True):
+                value = str(row.get(column) or "").strip()
+                if not value:
+                    continue
+                rows.append(
+                    {
+                        "combination_column": column,
+                        "combination_value": value,
+                        "jumlah": int(row.get("jumlah") or 0),
+                    }
+                )
+
+        if not rows:
+            return pl.DataFrame()
+        return pl.from_dicts(rows, strict=False)
+
+    def summarize_labeling_selection_buckets(
+        self,
+        labeling_df: pl.DataFrame,
+    ) -> pl.DataFrame:
+        if labeling_df.is_empty():
+            return pl.DataFrame()
+        required = {"labeling_bucket_column", "labeling_bucket_value"}
+        if missing := required.difference(labeling_df.columns):
+            raise ValueError(f"Kolom bucket labeling belum lengkap: {sorted(missing)}")
+
+        rows: list[dict] = []
+        grouped = (
+            labeling_df.group_by(["labeling_bucket_column", "labeling_bucket_value"])
+            .agg(pl.len().alias("jumlah"))
+            .sort(["labeling_bucket_column", "labeling_bucket_value"])
+        )
+        for row in grouped.iter_rows(named=True):
+            column = str(row.get("labeling_bucket_column") or "").strip()
+            value = str(row.get("labeling_bucket_value") or "").strip()
+            if not column or not value:
+                continue
+            rows.append(
+                {
+                    "combination_column": column,
+                    "combination_value": value,
+                    "jumlah": int(row.get("jumlah") or 0),
+                }
+            )
+
+        if not rows:
+            return pl.DataFrame()
+        return pl.from_dicts(rows, strict=False)
+
     def _build_v1_candidate_row(
         self,
         index: int,
@@ -248,10 +413,15 @@ class DatasetService:
             " ".join([source_url, text, cleaned_raw_text[:2000]]),
             research_config.get("url_required_keywords", []),
         )
-        location = self._infer_location(
-            [combined, str(row.get("query") or ""), source_url],
-            research_config,
+        location_match = self._infer_location_match(
+            [
+                ("text", combined),
+                ("query", str(row.get("query") or "")),
+                ("source_url", source_url),
+            ],
+            research_config=research_config,
         )
+        location = location_match["location"]
         aspect = self._infer_aspect(combined, research_config)
         source_type = self._infer_source_type(domain, source_url, is_social)
 
@@ -311,6 +481,9 @@ class DatasetService:
             "query": row.get("query") or "",
             "raw_title": raw_title or content_title,
             "raw_text_length": int(row.get("content_text_length") or 0),
+            "location_source": location_match["source"],
+            "location_match": location_match["match"],
+            "is_specific_location": location_match["is_specific"],
         }
         return final_row
 
@@ -351,24 +524,48 @@ class DatasetService:
 
     @classmethod
     def _infer_location(cls, texts: list[str], research_config: dict) -> str:
+        match = cls._infer_location_match(
+            [(f"text_{index}", text) for index, text in enumerate(texts, start=1)],
+            research_config=research_config,
+        )
+        return match["location"]
+
+    @classmethod
+    def _infer_location_match(
+        cls,
+        text_sources: list[tuple[str, str]],
+        research_config: dict,
+    ) -> dict:
         location_terms = cls._location_terms(research_config)
-        specific_terms = [term for term in location_terms if not term[2]]
-        province_terms = [term for term in location_terms if term[2]]
+        specific_terms = [term for term in location_terms if term[3]]
+        province_terms = [term for term in location_terms if not term[3]]
 
-        for text in texts:
-            location = cls._first_matching_location(text, specific_terms)
-            if location:
-                return location
-        for text in texts:
-            location = cls._first_matching_location(text, province_terms)
-            if location:
-                return location
-        return ""
+        for source, text in text_sources:
+            match = cls._first_matching_location(text, specific_terms)
+            if match:
+                return {
+                    "location": match["canonical"],
+                    "source": source,
+                    "match": match["alias"],
+                    "is_specific": True,
+                }
+        for source, text in text_sources:
+            match = cls._first_matching_location(text, province_terms)
+            if match:
+                return {
+                    "location": match["canonical"],
+                    "source": source,
+                    "match": match["alias"],
+                    "is_specific": False,
+                }
+        return {"location": "", "source": "", "match": "", "is_specific": False}
 
-    @staticmethod
-    def _location_terms(research_config: dict) -> list[tuple[str, str, bool]]:
+    @classmethod
+    def _location_terms(cls, research_config: dict) -> list[tuple[str, str, bool, bool]]:
         terms: dict[str, str] = {}
         primary_location = str(research_config.get("primary_location") or "").strip()
+        specific_locations = cls._kalbar_specific_location_names()
+        specific_location_keys = {location.casefold() for location in specific_locations}
 
         for canonical, aliases in (
             research_config.get("location_aliases") or {}
@@ -394,6 +591,9 @@ class DatasetService:
             if entity_text:
                 terms.setdefault(entity_text.casefold(), entity_text)
 
+        for location in specific_locations:
+            terms.setdefault(location.casefold(), location)
+
         return sorted(
             (
                 (
@@ -401,24 +601,93 @@ class DatasetService:
                     canonical,
                     bool(primary_location)
                     and canonical.casefold() == primary_location.casefold(),
+                    canonical.casefold() in specific_location_keys
+                    or alias in specific_location_keys,
                 )
                 for alias, canonical in terms.items()
             ),
-            key=lambda item: len(item[0]),
+            key=lambda item: (item[3], len(item[0])),
             reverse=True,
         )
 
+    @classmethod
+    def _kalbar_specific_location_names(cls) -> set[str]:
+        province_code = cls._province_code("KALIMANTAN BARAT")
+        if not province_code:
+            return set()
+
+        regencies: dict[str, str] = {}
+        for row in cls._read_wilayah_csv(config.RESOURCES / "wilayah" / "kabupaten.csv"):
+            if row.get("parent_code") == province_code:
+                code = str(row.get("code") or "").strip()
+                name = cls._canonical_location_name(row.get("name") or "")
+                if code and name:
+                    regencies[code] = name
+
+        locations = set(regencies.values())
+        for row in cls._read_wilayah_csv(config.RESOURCES / "wilayah" / "kecamatan.csv"):
+            if row.get("parent_code") in regencies:
+                name = cls._canonical_location_name(row.get("name") or "")
+                if name:
+                    locations.add(name)
+        return locations
+
+    @classmethod
+    def _province_code(cls, province_name: str) -> str:
+        target = province_name.casefold()
+        for row in cls._read_wilayah_csv(config.RESOURCES / "wilayah" / "provinsi.csv"):
+            if str(row.get("name") or "").casefold() == target:
+                return str(row.get("code") or "").strip()
+        return ""
+
+    @staticmethod
+    def _read_wilayah_csv(path: Path) -> list[dict[str, str]]:
+        if not path.exists():
+            return []
+        with path.open(encoding=config.ENCODING, newline="") as handle:
+            return list(csv.DictReader(handle))
+
+    @staticmethod
+    def _canonical_location_name(name: str) -> str:
+        value = re.sub(r"^(KABUPATEN|KOTA|KECAMATAN)\s+", "", str(name or "").strip())
+        return value.title()
+
     @staticmethod
     def _first_matching_location(
-        text: str, location_terms: list[tuple[str, str, bool]]
-    ) -> str:
+        text: str, location_terms: list[tuple[str, str, bool, bool]]
+    ) -> dict[str, str]:
         normalized = str(text or "").casefold()
         if not normalized:
-            return ""
-        for alias, canonical, _is_primary_scope in location_terms:
-            if alias in normalized:
-                return canonical
-        return ""
+            return {}
+        for alias, canonical, _is_primary_scope, _is_specific in location_terms:
+            if DatasetService._contains_location_alias(normalized, alias):
+                return {"canonical": canonical, "alias": alias}
+        return {}
+
+    @staticmethod
+    def _contains_location_alias(normalized_text: str, alias: str) -> bool:
+        escaped = re.escape(str(alias or "").casefold())
+        if not escaped:
+            return False
+        pattern = rf"(?<![0-9A-Za-zÀ-ſ]){escaped}(?![0-9A-Za-zÀ-ſ])"
+        return re.search(pattern, normalized_text) is not None
+
+    @staticmethod
+    def _candidate_labeling_sort_key(row: dict) -> tuple:
+        score = float(row.get("evidence_support_score") or 0.0)
+        text = str(row.get("text") or "").strip()
+        location = str(row.get("location") or "").strip()
+        text_id = str(row.get("text_id") or "")
+        raw_text_length = int(row.get("raw_text_length") or 0)
+        return (-score, -int(bool(text)), -int(bool(location)), -raw_text_length, text_id)
+
+    @staticmethod
+    def _candidate_selection_id(
+        row: dict,
+        fallback_index: int,
+    ) -> str:
+        text_id = str(row.get("text_id") or "")
+        return text_id or f"candidate:{fallback_index}"
 
     @staticmethod
     def _matches_domain(domain: str, url: str, patterns: list[str]) -> bool:
