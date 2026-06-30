@@ -172,8 +172,9 @@ class DatasetService:
         self,
         folder: str | Path,
         *,
-        pattern: str = "v*_candidate_labeling_dataset.csv",
+        pattern: str = "*candidate_labeling_dataset.csv",
         exclude_paths: tuple[str | Path, ...] | list[str | Path] = (),
+        require_sentiment_output: bool = True,
     ) -> tuple[str, ...]:
         folder = Path(folder)
         if not folder.exists():
@@ -188,6 +189,10 @@ class DatasetService:
 
         for path in sorted(folder.glob(pattern)):
             if path.resolve() in excluded:
+                continue
+            if require_sentiment_output and not self._has_sentiment_labeling_output(
+                path
+            ):
                 continue
 
             try:
@@ -214,6 +219,20 @@ class DatasetService:
                             source_urls.setdefault(source_url, None)
 
         return tuple(source_urls)
+
+    @staticmethod
+    def _has_sentiment_labeling_output(candidate_path: Path) -> bool:
+        stem = candidate_path.stem
+        suffix = "_candidate_labeling_dataset"
+        if not stem.endswith(suffix):
+            return False
+
+        prefix = stem.removesuffix(suffix)
+        if prefix:
+            pattern = f"{prefix}_sentiment_labeling_output*.json"
+        else:
+            pattern = "sentiment_labeling_output*.json"
+        return any(candidate_path.parent.glob(pattern))
 
     def apply_source_url_blacklist(
         self,

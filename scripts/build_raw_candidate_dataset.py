@@ -33,6 +33,7 @@ def build_source_blacklist_service(
     source_blacklist_rules_path: Path,
     used_candidate_blacklist_folder: Path | None,
     used_candidate_blacklist_pattern: str,
+    require_used_candidate_sentiment_output: bool,
 ) -> tuple[SourceBlacklistService, int]:
     exact_urls = list(
         SourceBlacklistService.load_exact_blacklist(source_url_blacklist_path)
@@ -43,6 +44,7 @@ def build_source_blacklist_service(
         used_candidate_source_urls = service.load_used_candidate_source_urls(
             used_candidate_blacklist_folder,
             pattern=used_candidate_blacklist_pattern,
+            require_sentiment_output=require_used_candidate_sentiment_output,
         )
         exact_urls.extend(used_candidate_source_urls)
 
@@ -62,7 +64,8 @@ def build_frames(
     source_url_blacklist_path: Path = config.SOURCE_URL_BLACKLIST_PATH,
     source_blacklist_rules_path: Path = config.SOURCE_BLACKLIST_RULES_PATH,
     used_candidate_blacklist_folder: Path | None = config.OUTPUTS / "datasets",
-    used_candidate_blacklist_pattern: str = "v*_candidate_labeling_dataset.csv",
+    used_candidate_blacklist_pattern: str = "*candidate_labeling_dataset.csv",
+    require_used_candidate_sentiment_output: bool = True,
 ) -> dict[str, object]:
     service = DatasetService()
     research_config = service.load_research_config(research_config_path)
@@ -72,6 +75,7 @@ def build_frames(
         source_blacklist_rules_path=source_blacklist_rules_path,
         used_candidate_blacklist_folder=used_candidate_blacklist_folder,
         used_candidate_blacklist_pattern=used_candidate_blacklist_pattern,
+        require_used_candidate_sentiment_output=require_used_candidate_sentiment_output,
     )
 
     meta_df = service.load_url_discovery_meta(raw_folder)
@@ -132,19 +136,27 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=config.OUTPUTS / "datasets",
         help=(
-            "Folder CSV v*_candidate_labeling_dataset.csv yang source_url-nya "
+            "Folder CSV *candidate_labeling_dataset.csv yang source_url-nya "
             "ditandai sebagai blacklist pemakaian sebelumnya."
         ),
     )
     parser.add_argument(
         "--used-candidate-blacklist-pattern",
-        default="v*_candidate_labeling_dataset.csv",
+        default="*candidate_labeling_dataset.csv",
         help="Glob pattern CSV kandidat lama untuk blacklist pemakaian sebelumnya.",
     )
     parser.add_argument(
         "--disable-used-candidate-blacklist",
         action="store_true",
         help="Matikan blacklist otomatis dari CSV kandidat versi lama.",
+    )
+    parser.add_argument(
+        "--include-candidates-without-sentiment-output",
+        action="store_true",
+        help=(
+            "Ikut blacklist kandidat lama walau belum punya file "
+            "*sentiment_labeling_output*.json."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -184,6 +196,9 @@ def main() -> None:
             else args.used_candidate_blacklist_folder
         ),
         used_candidate_blacklist_pattern=args.used_candidate_blacklist_pattern,
+        require_used_candidate_sentiment_output=(
+            not args.include_candidates_without_sentiment_output
+        ),
     )
     output_df = frames["candidate"] if args.include_blacklisted else frames["clear_candidate"]
     print(f"Raw records: {frames['raw_records'].height:,}")
