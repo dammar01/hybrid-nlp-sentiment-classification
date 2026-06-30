@@ -90,6 +90,9 @@ Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/en/1.1.0/
 - Kolom evidence terstruktur `rule_evidence` untuk menyimpan detail hit dalam format JSON.
 - Konstanta rule-based lexicon di `config.py`, termasuk token pattern, status, effect modifier, threshold, dan bobot contrast/concession.
 - Jupyter notebook untuk melakukan analisis dataset yang telah dibuat
+- Notebook `calibration.ipynb` untuk menjalankan alur kalibrasi skenario hybrid NLP tanpa LLM dari load dataset, preprocessing, rule-based sentiment, embedding, clustering semantic, ambiguity detection, evaluasi, sampai ringkasan distribusi.
+- Salinan notebook kalibrasi versi terstruktur di `notebook/v1_calibration.ipynb`.
+- Export hasil skenario tanpa LLM ke `outputs/results/scenario_without_llm.csv` dan ringkasan prediksi/metrik ke `outputs/artifacts/scenario_without_llm_metrics.json`.
 
 ### Changed
 
@@ -97,18 +100,23 @@ Format mengikuti prinsip [Keep a Changelog](https://keepachangelog.com/en/1.1.0/
 - Pipeline internal phrase dan word disatukan melalui proses evidence collection sebelum scoring final.
 - Output `analyze_text()` sekarang divalidasi terhadap `config.RULE_OUTPUT_COLUMNS`.
 - `VisualizationService` sekarang membaca kolom hit rule melalui konstanta `config`, bukan literal string.
+- Alur evaluasi kalibrasi sekarang tetap menghasilkan ringkasan prediksi saat kolom `actual_label` tidak tersedia, sehingga notebook tidak bergantung pada label aktual untuk menyimpan output.
+- `opinion_dataset_analysis.ipynb` disederhanakan dengan menghapus bagian kelengkapan kolom, sehingga bagian contoh teks per tier menjadi bagian akhir analisis.
 
 ### Fixed
 
 - Resource validation diperketat untuk label, weight, term kosong, scope modifier, multiplier, dan effect contrast/negation.
 - Structured evidence menyimpan `source`, `score`, `weight`, `category`, `reason`, `span`, `modifiers`, dan `clause_weight` untuk setiap sentiment hit.
+- Execution count pada `raw_datasets_processor.ipynb` dikosongkan agar notebook lebih bersih saat dibuka ulang.
 
 ### Removed
 
--
+- Chart kelengkapan kolom dari `opinion_dataset_analysis.ipynb`.
 
 ### Notes
 
 - Versi kontrak rule-based lexicon saat ini adalah `2.0.0`.
 - Versi resource default saat ini adalah `1.0.0` jika file JSON belum memiliki field `version`.
 - `rule_evidence` disimpan sebagai string JSON agar tetap kompatibel dengan output tabular Polars/CSV.
+- Dataset kalibrasi default membaca `datasets/raw_candidate_schema.csv`.
+- Embedding kalibrasi saat ini memakai backend `hashing` untuk skenario non-LLM.
