@@ -17,6 +17,7 @@ from urllib.parse import unquote, urlparse
 import polars as pl
 
 import config
+from services.source_blacklist_service import SourceBlacklistService
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,6 @@ V1_SHS_DATASET_COLUMNS: tuple[str, ...] = (
 CANDIDATE_COMBINATION_COLUMNS: tuple[str, ...] = (
     "source_type",
     "aspect",
-    "dataset_tier",
 )
 
 CANDIDATE_LABELING_DATASET_COLUMNS: tuple[str, ...] = (
@@ -159,6 +159,53 @@ class DatasetService:
             if str(item).strip()
         )
 
+    def load_used_candidate_source_urls(
+        self,
+        folder: str | Path,
+        *,
+        pattern: str = "v*_candidate_labeling_dataset.csv",
+        exclude_paths: tuple[str | Path, ...] | list[str | Path] = (),
+    ) -> tuple[str, ...]:
+        folder = Path(folder)
+        if not folder.exists():
+            return ()
+
+        excluded = {
+            Path(path).resolve()
+            for path in exclude_paths
+            if str(path).strip()
+        }
+        source_urls: dict[str, None] = {}
+
+        for path in sorted(folder.glob(pattern)):
+            if path.resolve() in excluded:
+                continue
+
+            try:
+                with path.open("r", encoding=self.encoding, newline="") as handle:
+                    reader = csv.DictReader(handle)
+                    if "source_url" not in (reader.fieldnames or []):
+                        continue
+                    for row in reader:
+                        source_url = str(row.get("source_url") or "").strip()
+                        if source_url:
+                            source_urls.setdefault(source_url, None)
+            except UnicodeDecodeError:
+                with path.open(
+                    "r",
+                    encoding=config.ENCODING_FALLBACK,
+                    newline="",
+                ) as handle:
+                    reader = csv.DictReader(handle)
+                    if "source_url" not in (reader.fieldnames or []):
+                        continue
+                    for row in reader:
+                        source_url = str(row.get("source_url") or "").strip()
+                        if source_url:
+                            source_urls.setdefault(source_url, None)
+
+        return tuple(source_urls)
+
     def apply_source_url_blacklist(
         self,
         df: pl.DataFrame,
@@ -167,6 +214,39 @@ class DatasetService:
         if not source_url_blacklist or "source_url" not in df.columns:
             return df
         return df.filter(~pl.col("source_url").is_in(list(source_url_blacklist)))
+
+    def enrich_source_blacklist_status(
+        self,
+        df: pl.DataFrame,
+        blacklist_service: SourceBlacklistService,
+    ) -> pl.DataFrame:
+        if df.is_empty():
+            return df
+
+        rows: list[dict] = []
+        for row in df.iter_rows(named=True):
+            decision = blacklist_service.classify(row)
+            rows.append(
+                {
+                    **row,
+                    **decision,
+                    "blacklist_reason_codes": json.dumps(
+                        decision["blacklist_reason_codes"],
+                        ensure_ascii=False,
+                    ),
+                }
+            )
+        return pl.from_dicts(rows, strict=False)
+
+    def filter_clear_source_candidates(self, df: pl.DataFrame) -> pl.DataFrame:
+        if df.is_empty() or "blacklist_status" not in df.columns:
+            return df
+        return df.filter(pl.col("blacklist_status") == "clear")
+
+    def filter_blacklist_audit_candidates(self, df: pl.DataFrame) -> pl.DataFrame:
+        if df.is_empty() or "blacklist_status" not in df.columns:
+            return pl.DataFrame()
+        return df.filter(pl.col("blacklist_status") != "clear")
 
     def load_url_discovery_meta(self, folder: str | Path) -> pl.DataFrame:
         rows: list[dict] = []
@@ -361,6 +441,7 @@ class DatasetService:
             return candidate_df
         required = {
             *CANDIDATE_COMBINATION_COLUMNS,
+            "dataset_tier",
             "text",
             "location",
             "location_source",
@@ -373,6 +454,7 @@ class DatasetService:
         return candidate_df.filter(
             pl.col("dataset_tier").is_not_null()
             & (pl.col("dataset_tier").str.strip_chars().str.len_chars() > 0)
+            & pl.col("dataset_tier").is_in(["A_candidate_core", "B_review_queue"])
             & pl.col("source_type").is_not_null()
             & (pl.col("source_type").str.strip_chars().str.len_chars() > 0)
             & pl.col("aspect").is_not_null()
