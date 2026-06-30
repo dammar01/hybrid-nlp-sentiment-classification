@@ -11,6 +11,7 @@ import csv
 import json
 import logging
 import re
+import sys
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -20,6 +21,14 @@ import config
 from services.source_blacklist_service import SourceBlacklistService
 
 logger = logging.getLogger(__name__)
+
+MAX_CSV_FIELD_SIZE = sys.maxsize
+while True:
+    try:
+        csv.field_size_limit(MAX_CSV_FIELD_SIZE)
+        break
+    except OverflowError:
+        MAX_CSV_FIELD_SIZE //= 10
 
 V1_SHS_DATASET_COLUMNS: tuple[str, ...] = (
     "text_id",
