@@ -48,6 +48,40 @@ CANDIDATE_COMBINATION_COLUMNS: tuple[str, ...] = (
     "dataset_tier",
 )
 
+CANDIDATE_LABELING_DATASET_COLUMNS: tuple[str, ...] = (
+    "text_id",
+    "source_url",
+    "source_type",
+    "aspect",
+    "dataset_tier",
+    "location",
+    "location_source",
+    "location_match",
+    "is_specific_location",
+    "labeling_bucket_column",
+    "labeling_bucket_value",
+    "source_id",
+    "raw_source_file",
+    "raw_domain",
+    "content_status",
+    "raw_title",
+    "raw_text_length",
+    "query_group",
+    "query",
+    "subjectivity_type",
+    "speaker_type",
+    "public_opinion_scope",
+    "corpus_role",
+    "inclusion_status",
+    "verification_status",
+    "evidence_support_score",
+    "parent_text_id",
+    "decision_note",
+    "sentiment_label",
+    "label_status",
+    "text",
+)
+
 
 class DatasetService:
     """Layanan pengelolaan dataset mentah hingga siap diproses."""
@@ -111,6 +145,28 @@ class DatasetService:
         if not isinstance(data, dict):
             raise ValueError(f"Research config harus berupa object JSON: {path}")
         return data
+
+    def load_source_url_blacklist(self, path: str | Path) -> tuple[str, ...]:
+        path = Path(path)
+        if not path.exists():
+            return ()
+        data = json.loads(path.read_text(encoding=self.encoding))
+        if not isinstance(data, list):
+            raise ValueError(f"Source URL blacklist harus berupa array JSON: {path}")
+        return tuple(
+            str(item).strip()
+            for item in data
+            if str(item).strip()
+        )
+
+    def apply_source_url_blacklist(
+        self,
+        df: pl.DataFrame,
+        source_url_blacklist: tuple[str, ...] | list[str],
+    ) -> pl.DataFrame:
+        if not source_url_blacklist or "source_url" not in df.columns:
+            return df
+        return df.filter(~pl.col("source_url").is_in(list(source_url_blacklist)))
 
     def load_url_discovery_meta(self, folder: str | Path) -> pl.DataFrame:
         rows: list[dict] = []
@@ -265,7 +321,9 @@ class DatasetService:
 
         if not selected:
             return pl.DataFrame()
-        return pl.from_dicts(selected, strict=False)
+        return self._order_candidate_labeling_columns(
+            pl.from_dicts(selected, strict=False)
+        )
 
     def _candidate_labeling_groups(
         self,
@@ -278,6 +336,24 @@ class DatasetService:
                 if value:
                     groups.setdefault((column, value), []).append(row)
         return groups
+
+    @staticmethod
+    def _order_candidate_labeling_columns(labeling_df: pl.DataFrame) -> pl.DataFrame:
+        ordered_columns = [
+            column
+            for column in CANDIDATE_LABELING_DATASET_COLUMNS
+            if column in labeling_df.columns
+        ]
+        extra_columns = [
+            column
+            for column in labeling_df.columns
+            if column not in ordered_columns and column != "text"
+        ]
+        final_columns = ordered_columns + extra_columns
+        if "text" in labeling_df.columns and final_columns[-1:] != ["text"]:
+            final_columns = [column for column in final_columns if column != "text"]
+            final_columns.append("text")
+        return labeling_df.select(final_columns)
 
     def filter_labeling_ready_candidates(self, candidate_df: pl.DataFrame) -> pl.DataFrame:
         """Saring kandidat yang punya lokasi Kalbar spesifik dari text atau query."""

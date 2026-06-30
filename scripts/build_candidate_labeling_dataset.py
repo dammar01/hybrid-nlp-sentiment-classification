@@ -28,15 +28,21 @@ from services.dataset_service import DatasetService
 def build_frames(
     *,
     raw_folder: Path = config.DATASETS / "url_discovery",
-    research_config_path: Path = config.ROOT / "research_config.json",
+    research_config_path: Path = config.RESEARCH_CONFIG_PATH,
+    source_url_blacklist_path: Path = config.SOURCE_URL_BLACKLIST_PATH,
     max_rows_per_value: int = 10,
 ) -> dict[str, pl.DataFrame]:
     service = DatasetService()
     research_config = service.load_research_config(research_config_path)
+    source_url_blacklist = service.load_source_url_blacklist(source_url_blacklist_path)
     raw_records_df = service.load_url_discovery_records(raw_folder)
     candidate_df = service.build_v1_candidate_rows(
         records_df=raw_records_df,
         research_config=research_config,
+    )
+    candidate_df = service.apply_source_url_blacklist(
+        candidate_df,
+        source_url_blacklist,
     )
     labeling_df = service.build_candidate_labeling_dataset(
         candidate_df,
@@ -68,13 +74,15 @@ def apply_filter_conditions(df: pl.DataFrame, conditions: list) -> pl.DataFrame:
 def build_filtered_frames(
     *,
     raw_folder: Path = config.DATASETS / "url_discovery",
-    research_config_path: Path = config.ROOT / "research_config.json",
+    research_config_path: Path = config.RESEARCH_CONFIG_PATH,
+    source_url_blacklist_path: Path = config.SOURCE_URL_BLACKLIST_PATH,
     record_filter_conditions: list | None = None,
     candidate_filter_conditions: list | None = None,
     max_rows_per_value: int = 10,
 ) -> dict[str, pl.DataFrame]:
     service = DatasetService()
     research_config = service.load_research_config(research_config_path)
+    source_url_blacklist = service.load_source_url_blacklist(source_url_blacklist_path)
     meta_df = service.load_url_discovery_meta(raw_folder)
     queries_df = service.load_url_discovery_queries(raw_folder)
     raw_records_df = service.load_url_discovery_records(raw_folder)
@@ -82,6 +90,10 @@ def build_filtered_frames(
     candidate_df = service.build_v1_candidate_rows(
         records_df=records_df,
         research_config=research_config,
+    )
+    candidate_df = service.apply_source_url_blacklist(
+        candidate_df,
+        source_url_blacklist,
     )
     filtered_candidate_df = apply_filter_conditions(
         candidate_df,
@@ -122,8 +134,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--research-config",
         type=Path,
-        default=config.ROOT / "research_config.json",
+        default=config.RESEARCH_CONFIG_PATH,
         help="Path research_config.json.",
+    )
+    parser.add_argument(
+        "--source-url-blacklist",
+        type=Path,
+        default=config.SOURCE_URL_BLACKLIST_PATH,
+        help="Path JSON array URL yang dikeluarkan dari kandidat.",
     )
     parser.add_argument(
         "--max-per-value",
@@ -164,6 +182,7 @@ def main() -> None:
     frames = build_frames(
         raw_folder=args.raw_folder,
         research_config_path=args.research_config,
+        source_url_blacklist_path=args.source_url_blacklist,
         max_rows_per_value=args.max_per_value,
     )
     labeling_df = frames["labeling"]
