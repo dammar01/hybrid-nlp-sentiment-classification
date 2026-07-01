@@ -14,6 +14,20 @@ def parse_args() -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("build-training-dataset")
+    raw_candidate = subparsers.add_parser("build-raw-candidate-schema")
+    raw_candidate.add_argument("--output", type=Path, default=config.RAW_CANDIDATE_SCHEMA_PATH)
+    raw_candidate.add_argument("--no-sentence-split", action="store_true")
+    raw_candidate.add_argument(
+        "--sentence-min-chars",
+        type=int,
+        default=config.RAW_CANDIDATE_SENTENCE_MIN_CHARS,
+    )
+    raw_candidate.add_argument(
+        "--sentence-max-chars",
+        type=int,
+        default=config.RAW_CANDIDATE_SENTENCE_MAX_CHARS,
+    )
+    raw_candidate.add_argument("--no-write", action="store_true")
     subparsers.add_parser("create-fixed-group-split")
 
     train = subparsers.add_parser("train-indobert")
@@ -31,6 +45,12 @@ def parse_args() -> argparse.Namespace:
     runtime.add_argument("--calibration-artifact", type=Path, required=True)
     runtime.add_argument("--fusion-policy", type=Path, required=True)
     runtime.add_argument("--output-dir", type=Path, required=True)
+    runtime.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Batasi jumlah row runtime yang diproses dari awal input CSV.",
+    )
     return parser.parse_args()
 
 
@@ -41,6 +61,23 @@ def main() -> None:
 
         sys.argv = ["build_training_dataset.py"]
         build_training_main()
+    elif args.command == "build-raw-candidate-schema":
+        from scripts.build_raw_candidate_dataset import main as build_raw_candidate_main
+
+        sys.argv = [
+            "build_raw_candidate_dataset.py",
+            "--output",
+            str(args.output),
+            "--sentence-min-chars",
+            str(args.sentence_min_chars),
+            "--sentence-max-chars",
+            str(args.sentence_max_chars),
+        ]
+        if args.no_sentence_split:
+            sys.argv.append("--no-sentence-split")
+        if args.no_write:
+            sys.argv.append("--no-write")
+        build_raw_candidate_main()
     elif args.command == "create-fixed-group-split":
         from scripts.create_fixed_group_split import main as create_split_main
 
@@ -79,6 +116,7 @@ def main() -> None:
             calibration_artifact_path=args.calibration_artifact,
             fusion_policy_path=args.fusion_policy,
             output_dir=args.output_dir,
+            limit=args.limit,
         )
         print(f"Predictions: {result['predictions_path']}")
         print(f"Summary: {result['summary_path']}")

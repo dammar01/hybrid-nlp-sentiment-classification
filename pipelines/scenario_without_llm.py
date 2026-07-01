@@ -34,11 +34,17 @@ def run(
     calibration_artifact_path: str | Path,
     fusion_policy_path: str | Path,
     output_dir: str | Path,
+    limit: int | None = None,
 ) -> dict[str, Any]:
     input_path = Path(input_path)
     output_dir = Path(output_dir)
     artifact = ArtifactService()
     df = pl.read_csv(input_path, infer_schema_length=10_000, ignore_errors=True)
+    total_input_rows = df.height
+    if limit is not None:
+        if limit <= 0:
+            raise ValueError("--limit harus lebih besar dari 0")
+        df = df.head(limit)
     validate_input(df)
     prepared = prepare_runtime_input(df)
 
@@ -62,6 +68,8 @@ def run(
         prepared_df=prepared,
         result_df=result,
         input_path=input_path,
+        total_input_rows=total_input_rows,
+        runtime_limit=limit,
         model_dir=Path(model_dir),
         calibration_artifact_path=Path(calibration_artifact_path),
         fusion_policy_path=Path(fusion_policy_path),
@@ -77,6 +85,7 @@ def run(
             "calibration_artifact_path": str(calibration_artifact_path),
             "fusion_policy_path": str(fusion_policy_path),
             "output_dir": str(output_dir),
+            "runtime_limit": limit,
             "label_mapping": config.LABEL2ID,
         },
         output_dir / "scenario_without_llm_manifest.json",
@@ -127,6 +136,8 @@ def build_summary(
     prepared_df: pl.DataFrame,
     result_df: pl.DataFrame,
     input_path: Path,
+    total_input_rows: int,
+    runtime_limit: int | None,
     model_dir: Path,
     calibration_artifact_path: Path,
     fusion_policy_path: Path,
@@ -156,6 +167,8 @@ def build_summary(
         "model_dir": str(model_dir),
         "calibration_artifact_path": str(calibration_artifact_path),
         "fusion_policy_path": str(fusion_policy_path),
+        "total_input_rows": total_input_rows,
+        "runtime_limit": runtime_limit,
         "input_rows": input_df.height,
         "deduplicated_rows": prepared_df.height,
         "output_rows": result_df.height,

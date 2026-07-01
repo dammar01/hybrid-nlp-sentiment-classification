@@ -91,6 +91,37 @@ CANDIDATE_LABELING_DATASET_COLUMNS: tuple[str, ...] = (
     "text",
 )
 
+COMMON_SENTENCE_ABBREVIATIONS: frozenset[str] = frozenset(
+    {
+        "adm",
+        "bpk",
+        "buk",
+        "cv",
+        "dll",
+        "dkk",
+        "dr",
+        "ds",
+        "dst",
+        "fig",
+        "jl",
+        "kab",
+        "kec",
+        "kel",
+        "no",
+        "pt",
+        "rt",
+        "rw",
+        "s.d",
+        "sd",
+        "smp",
+        "sma",
+        "smk",
+        "st",
+        "tbk",
+        "yth",
+    }
+)
+
 
 class DatasetService:
     """Layanan pengelolaan dataset mentah hingga siap diproses."""
@@ -462,6 +493,208 @@ class DatasetService:
             final_columns = [column for column in final_columns if column != "text"]
             final_columns.append("text")
         return labeling_df.select(final_columns)
+
+    def split_candidate_rows_to_sentences(
+        self,
+        candidate_df: pl.DataFrame,
+        *,
+        min_chars: int = 35,
+        max_chars: int = 320,
+    ) -> pl.DataFrame:
+        """Ubah candidate source-level menjadi sentence/span-level runtime row.
+
+        Golden dataset tidak disentuh. Metode ini hanya dipakai untuk membangun
+        ``raw_candidate_schema.csv`` agar unit prediksi runtime lebih dekat
+        dengan ``text_selected`` pada golden dataset.
+        """
+        if candidate_df.is_empty():
+            return candidate_df
+        if "text" not in candidate_df.columns:
+            raise ValueError("Kolom text wajib ada sebelum sentence split")
+
+        rows: list[dict] = []
+        for row in candidate_df.iter_rows(named=True):
+            parent_text_id = str(row.get("text_id") or "").strip()
+            text = str(row.get("text") or "")
+            spans = self.split_text_to_sentence_spans(
+                text,
+                min_chars=min_chars,
+                max_chars=max_chars,
+            )
+            if not spans:
+                continue
+
+            sentence_count = len(spans)
+            for sentence_index, span in enumerate(spans, start=1):
+                text_id = (
+                    f"{parent_text_id}#{sentence_index:02d}"
+                    if parent_text_id
+                    else f"SENT-{len(rows) + 1:06d}"
+                )
+                rows.append(
+                    {
+                        **row,
+                        "text_id": text_id,
+                        "base_text_id": parent_text_id,
+                        "parent_text_id": parent_text_id,
+                        "text": span,
+                        "sentence_index": sentence_index,
+                        "sentence_count": sentence_count,
+                        "candidate_generation_method": "sentence_split",
+                        "source_text_length": len(text),
+                        "candidate_text_length": len(span),
+                    }
+                )
+
+        if not rows:
+            return pl.DataFrame()
+        return pl.from_dicts(rows, strict=False)
+
+    @classmethod
+    def split_text_to_sentence_spans(
+        cls,
+        text: str,
+        *,
+        min_chars: int = 35,
+        max_chars: int = 320,
+    ) -> list[str]:
+        normalized = cls._normalize_text(text)
+        if not normalized:
+            return []
+
+        rough_spans = cls._rough_sentence_split(normalized)
+        merged = cls._merge_short_sentence_spans(rough_spans, min_chars=min_chars)
+        return cls._split_long_sentence_spans(merged, max_chars=max_chars)
+
+    @classmethod
+    def _rough_sentence_split(cls, text: str) -> list[str]:
+        spans: list[str] = []
+        start = 0
+        for index, char in enumerate(text):
+            if char not in ".!?;":
+                continue
+            if not cls._is_sentence_boundary(text, index):
+                continue
+            span = cls._normalize_text(text[start : index + 1])
+            if span:
+                spans.append(span)
+            start = index + 1
+
+        tail = cls._normalize_text(text[start:])
+        if tail:
+            spans.append(tail)
+        return spans or [text]
+
+    @classmethod
+    def _is_sentence_boundary(cls, text: str, index: int) -> bool:
+        char = text[index]
+        before = text[index - 1] if index > 0 else ""
+        after = text[index + 1] if index + 1 < len(text) else ""
+        if char == ".":
+            if before.isdigit() and after.isdigit():
+                return False
+            if cls._looks_like_url_or_email(text, index):
+                return False
+            if cls._previous_token(text, index).casefold().rstrip(".") in COMMON_SENTENCE_ABBREVIATIONS:
+                return False
+        if after and not after.isspace() and after not in "\"')]}":
+            return False
+        return True
+
+    @staticmethod
+    def _looks_like_url_or_email(text: str, index: int) -> bool:
+        left = text[max(0, index - 24) : index].casefold()
+        right = text[index + 1 : index + 24].casefold()
+        context = f"{left}.{right}"
+        return (
+            "www." in context
+            or "http://" in context
+            or "https://" in context
+            or ".com" in context
+            or ".co." in context
+            or ".go." in context
+            or ".id" in context
+            or "@" in context
+        )
+
+    @staticmethod
+    def _previous_token(text: str, index: int) -> str:
+        prefix = text[:index].rstrip()
+        if not prefix:
+            return ""
+        return re.split(r"\s+", prefix)[-1]
+
+    @classmethod
+    def _merge_short_sentence_spans(
+        cls,
+        spans: list[str],
+        *,
+        min_chars: int,
+    ) -> list[str]:
+        if min_chars <= 0:
+            return [cls._normalize_text(span) for span in spans if cls._normalize_text(span)]
+
+        merged: list[str] = []
+        buffer = ""
+        for span in spans:
+            clean = cls._normalize_text(span)
+            if not clean:
+                continue
+            buffer = cls._normalize_text(f"{buffer} {clean}") if buffer else clean
+            if len(buffer) >= min_chars:
+                merged.append(buffer)
+                buffer = ""
+
+        if buffer:
+            if merged:
+                merged[-1] = cls._normalize_text(f"{merged[-1]} {buffer}")
+            else:
+                merged.append(buffer)
+        return merged
+
+    @classmethod
+    def _split_long_sentence_spans(
+        cls,
+        spans: list[str],
+        *,
+        max_chars: int,
+    ) -> list[str]:
+        if max_chars <= 0:
+            return [cls._normalize_text(span) for span in spans if cls._normalize_text(span)]
+
+        output: list[str] = []
+        for span in spans:
+            clean = cls._normalize_text(span)
+            if not clean:
+                continue
+            if len(clean) <= max_chars:
+                output.append(clean)
+                continue
+            output.extend(cls._split_long_span(clean, max_chars=max_chars))
+        return output
+
+    @classmethod
+    def _split_long_span(cls, text: str, *, max_chars: int) -> list[str]:
+        parts: list[str] = []
+        remaining = text
+        while len(remaining) > max_chars:
+            split_at = cls._best_soft_split_index(remaining, max_chars=max_chars)
+            if split_at <= 0:
+                break
+            parts.append(cls._normalize_text(remaining[:split_at]))
+            remaining = cls._normalize_text(remaining[split_at:])
+        if remaining:
+            parts.append(cls._normalize_text(remaining))
+        return [part for part in parts if part]
+
+    @staticmethod
+    def _best_soft_split_index(text: str, *, max_chars: int) -> int:
+        window = text[:max_chars]
+        for delimiter in (", ", " - ", " — ", " – ", ": ", " "):
+            index = window.rfind(delimiter)
+            if index >= max(40, int(max_chars * 0.45)):
+                return index + len(delimiter)
+        return max_chars
 
     def filter_labeling_ready_candidates(self, candidate_df: pl.DataFrame) -> pl.DataFrame:
         """Saring kandidat yang punya lokasi Kalbar spesifik dari text atau query."""

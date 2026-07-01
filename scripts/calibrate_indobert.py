@@ -78,6 +78,17 @@ def prepare_component_predictions(
     return rule_service.analyze_dataframe(predicted, text_column=config.COL_PROCESSED)
 
 
+def apply_frozen_policy(
+    df: pl.DataFrame,
+    *,
+    policy: dict,
+) -> pl.DataFrame:
+    scored = AmbiguityService(
+        weights=dict(policy["uncertainty_weights"])
+    ).score_dataframe(df)
+    return FusionService(policy=policy).fuse_dataframe(scored)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Calibrate IndoBERT and select fusion policy.")
     parser.add_argument("--dataset", type=Path, default=config.TRAINING_DATASET_WITH_SPLIT_PATH)
@@ -115,10 +126,7 @@ def main() -> None:
     policy = FusionService().select_policy(calibrated_calibration)
     artifact.save_json(policy, experiment_dir / "fusion_policy.json")
 
-    scored_calibration = AmbiguityService(
-        weights=dict(policy["uncertainty_weights"])
-    ).score_dataframe(calibrated_calibration)
-    fused_calibration = FusionService(policy=policy).fuse_dataframe(scored_calibration)
+    fused_calibration = apply_frozen_policy(calibrated_calibration, policy=policy)
     artifact.save_parquet(fused_calibration, experiment_dir / "calibration_predictions.parquet")
 
     test_predictions = prepare_component_predictions(
@@ -126,21 +134,51 @@ def main() -> None:
         model_dir=model_dir,
         temperature=float(calibration_artifact["temperature"]),
     )
-    scored_test = AmbiguityService(
-        weights=dict(policy["uncertainty_weights"])
-    ).score_dataframe(test_predictions)
-    fused_test = FusionService(policy=policy).fuse_dataframe(scored_test)
+    fused_test = apply_frozen_policy(test_predictions, policy=policy)
+
+    golden_non_train_df = df.filter(pl.col("split").is_in(["calibration", "test"]))
+    golden_non_train_predictions = prepare_component_predictions(
+        golden_non_train_df,
+        model_dir=model_dir,
+        temperature=float(calibration_artifact["temperature"]),
+    )
+    fused_golden_non_train = apply_frozen_policy(
+        golden_non_train_predictions,
+        policy=policy,
+    )
+
+    golden_all_predictions = prepare_component_predictions(
+        df,
+        model_dir=model_dir,
+        temperature=float(calibration_artifact["temperature"]),
+    )
+    fused_golden_all = apply_frozen_policy(golden_all_predictions, policy=policy)
+
+    evaluator = EvaluationService()
     metrics = {
-        "calibration": EvaluationService().evaluate_components(
+        "calibration": evaluator.evaluate_components(
             fused_calibration,
             actual_column="sentiment_label",
         ),
-        "test_after_policy_frozen": EvaluationService().evaluate_components(
+        "test_after_policy_frozen": evaluator.evaluate_components(
             fused_test,
+            actual_column="sentiment_label",
+        ),
+        "golden_non_train_audit": evaluator.evaluate_components(
+            fused_golden_non_train,
+            actual_column="sentiment_label",
+        ),
+        "golden_all_audit": evaluator.evaluate_components(
+            fused_golden_all,
             actual_column="sentiment_label",
         ),
     }
     artifact.save_parquet(fused_test, experiment_dir / "test_predictions.parquet")
+    artifact.save_parquet(
+        fused_golden_non_train,
+        experiment_dir / "golden_non_train_predictions.parquet",
+    )
+    artifact.save_parquet(fused_golden_all, experiment_dir / "golden_all_predictions.parquet")
     artifact.save_json(metrics, experiment_dir / "metrics.json")
     print(f"Calibration artifact: {experiment_dir / 'calibration_artifact.json'}")
     print(f"Fusion policy: {experiment_dir / 'fusion_policy.json'}")

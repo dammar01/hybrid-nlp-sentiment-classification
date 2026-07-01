@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 from pathlib import Path
 import sys
+from datetime import datetime
 
 import polars as pl
 
@@ -66,6 +68,9 @@ def build_frames(
     used_candidate_blacklist_folder: Path | None = config.OUTPUTS / "datasets",
     used_candidate_blacklist_pattern: str = "*candidate_labeling_dataset.csv",
     require_used_candidate_sentiment_output: bool = True,
+    sentence_split: bool = True,
+    sentence_min_chars: int = config.RAW_CANDIDATE_SENTENCE_MIN_CHARS,
+    sentence_max_chars: int = config.RAW_CANDIDATE_SENTENCE_MAX_CHARS,
 ) -> dict[str, object]:
     service = DatasetService()
     research_config = service.load_research_config(research_config_path)
@@ -91,6 +96,24 @@ def build_frames(
     )
     blacklist_audit_df = service.filter_blacklist_audit_candidates(candidate_df)
     clear_candidate_df = service.filter_clear_source_candidates(candidate_df)
+    runtime_candidate_df = (
+        service.split_candidate_rows_to_sentences(
+            clear_candidate_df,
+            min_chars=sentence_min_chars,
+            max_chars=sentence_max_chars,
+        )
+        if sentence_split
+        else clear_candidate_df
+    )
+    runtime_all_candidate_df = (
+        service.split_candidate_rows_to_sentences(
+            candidate_df,
+            min_chars=sentence_min_chars,
+            max_chars=sentence_max_chars,
+        )
+        if sentence_split
+        else candidate_df
+    )
 
     return {
         "meta": meta_df,
@@ -98,9 +121,23 @@ def build_frames(
         "raw_records": raw_records_df,
         "candidate": candidate_df,
         "clear_candidate": clear_candidate_df,
+        "runtime_candidate": runtime_candidate_df,
+        "runtime_all_candidate": runtime_all_candidate_df,
         "blacklist_audit": blacklist_audit_df,
         "used_candidate_source_url_count": used_candidate_source_url_count,
+        "sentence_split": sentence_split,
+        "sentence_min_chars": sentence_min_chars,
+        "sentence_max_chars": sentence_max_chars,
     }
+
+
+def backup_existing_output(path: Path) -> Path | None:
+    if not path.exists():
+        return None
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    backup_path = path.with_name(f"{path.stem}.backup-{timestamp}{path.suffix}")
+    shutil.copy2(path, backup_path)
+    return backup_path
 
 
 def parse_args() -> argparse.Namespace:
@@ -176,6 +213,28 @@ def parse_args() -> argparse.Namespace:
         help="Tulis seluruh candidate row, termasuk yang terkena blacklist.",
     )
     parser.add_argument(
+        "--no-sentence-split",
+        action="store_true",
+        help="Matikan split per kalimat dan gunakan satu row per source seperti builder lama.",
+    )
+    parser.add_argument(
+        "--sentence-min-chars",
+        type=int,
+        default=config.RAW_CANDIDATE_SENTENCE_MIN_CHARS,
+        help="Panjang minimum span setelah merge fragmen pendek.",
+    )
+    parser.add_argument(
+        "--sentence-max-chars",
+        type=int,
+        default=config.RAW_CANDIDATE_SENTENCE_MAX_CHARS,
+        help="Panjang maksimum target span sebelum soft split.",
+    )
+    parser.add_argument(
+        "--no-backup",
+        action="store_true",
+        help="Jangan buat backup ketika output sudah ada.",
+    )
+    parser.add_argument(
         "--no-write",
         action="store_true",
         help="Bangun frame dan tampilkan ringkasan tanpa menulis CSV.",
@@ -199,8 +258,15 @@ def main() -> None:
         require_used_candidate_sentiment_output=(
             not args.include_candidates_without_sentiment_output
         ),
+        sentence_split=not args.no_sentence_split,
+        sentence_min_chars=args.sentence_min_chars,
+        sentence_max_chars=args.sentence_max_chars,
     )
-    output_df = frames["candidate"] if args.include_blacklisted else frames["clear_candidate"]
+    output_df = (
+        frames["runtime_all_candidate"]
+        if args.include_blacklisted
+        else frames["runtime_candidate"]
+    )
     print(f"Raw records: {frames['raw_records'].height:,}")
     print(f"Candidate rows: {frames['candidate'].height:,}")
     print(
@@ -208,6 +274,11 @@ def main() -> None:
         f"{frames['used_candidate_source_url_count']:,}"
     )
     print(f"Clear candidate rows: {frames['clear_candidate'].height:,}")
+    print(f"Sentence split: {frames['sentence_split']}")
+    print(
+        "Sentence split chars: "
+        f"min={frames['sentence_min_chars']:,}, max={frames['sentence_max_chars']:,}"
+    )
     print(f"Blacklist excluded rows: {frames['blacklist_audit'].height:,}")
     print(f"Output rows: {output_df.height:,}")
 
@@ -215,6 +286,10 @@ def main() -> None:
         return
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    if not args.no_backup:
+        backup_path = backup_existing_output(args.output)
+        if backup_path:
+            print(f"Backup existing output: {backup_path}")
     output_df.write_csv(args.output)
     print(f"Output: {args.output}")
 
