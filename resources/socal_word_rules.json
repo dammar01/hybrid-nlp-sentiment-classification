@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "word_rules": [
     {
       "term": "membantu",
@@ -100,6 +100,146 @@
       "reason": "Positive when used for response or service speed."
     },
     {
+      "term": "sukses",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "implementation_success",
+      "reason": "Successful electrification or program delivery is a positive outcome."
+    },
+    {
+      "term": "berhasil",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "implementation_success",
+      "reason": "Successful implementation indicates a positive program result."
+    },
+    {
+      "term": "keberhasilan",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "implementation_success",
+      "reason": "Nominal form of successful implementation."
+    },
+    {
+      "term": "efisien",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "system_performance",
+      "reason": "Efficiency is a positive technical outcome for energy systems."
+    },
+    {
+      "term": "efisiensi",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "system_performance",
+      "reason": "Improved efficiency is a positive technical outcome."
+    },
+    {
+      "term": "meningkat",
+      "label": "positif",
+      "weight": 1.1,
+      "category": "improvement",
+      "reason": "Increase or improvement is positive in electrification impact contexts."
+    },
+    {
+      "term": "meningkatkan",
+      "label": "positif",
+      "weight": 1.1,
+      "category": "improvement",
+      "reason": "Action to improve welfare, service, or system quality."
+    },
+    {
+      "term": "memperkuat",
+      "label": "positif",
+      "weight": 1.1,
+      "category": "improvement",
+      "reason": "Strengthening local economy or system reliability is positive."
+    },
+    {
+      "term": "mempercepat",
+      "label": "positif",
+      "weight": 1.1,
+      "category": "improvement",
+      "reason": "Acceleration of development or access is a positive outcome."
+    },
+    {
+      "term": "mendukung",
+      "label": "positif",
+      "weight": 1.0,
+      "category": "support",
+      "reason": "Support for development, transition, or service delivery is positive."
+    },
+    {
+      "term": "mendorong",
+      "label": "positif",
+      "weight": 1.0,
+      "category": "support",
+      "reason": "Driving progress or productivity is positive."
+    },
+    {
+      "term": "solusi",
+      "label": "positif",
+      "weight": 1.1,
+      "category": "solution",
+      "reason": "A solution framing indicates a positive response to a problem."
+    },
+    {
+      "term": "apresiasi",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "user_satisfaction",
+      "reason": "Explicit appreciation indicates positive sentiment."
+    },
+    {
+      "term": "syukur",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "user_satisfaction",
+      "reason": "Gratitude indicates positive sentiment."
+    },
+    {
+      "term": "kesejahteraan",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "social_impact",
+      "reason": "Welfare is a positive electrification impact."
+    },
+    {
+      "term": "pemerataan",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "access_equity",
+      "reason": "Equitable access or development is a positive program outcome."
+    },
+    {
+      "term": "keandalan",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "service_quality",
+      "reason": "Reliability of electricity service is a positive assessment."
+    },
+    {
+      "term": "nyaman",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "service_quality",
+      "reason": "Comfortable electricity use is a positive service outcome."
+    },
+    {
+      "term": "peluang",
+      "label": "positif",
+      "weight": 1.0,
+      "category": "economic_impact",
+      "reason": "New opportunity is generally positive in development contexts."
+    },
+    {
+      "term": "teratasi",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "solution",
+      "reason": "A problem being resolved is a positive outcome."
+    },
+    {
       "term": "rusak",
       "label": "negatif",
       "weight": 1.6,
@@ -175,6 +315,167 @@
       "weight": 1.5,
       "category": "user_satisfaction",
       "reason": "Explicit dissatisfaction."
+    },
+    {
+      "term": "kendala",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "accessibility",
+      "reason": "Obstacle or constraint blocks electricity access or response."
+    },
+    {
+      "term": "keterbatasan",
+      "label": "negatif",
+      "weight": 1.3,
+      "category": "accessibility",
+      "reason": "Limited infrastructure, access, or budget is a negative condition."
+    },
+    {
+      "term": "terbatas",
+      "label": "negatif",
+      "weight": 1.0,
+      "category": "accessibility",
+      "reason": "Limited capacity or area indicates a constraint."
+    },
+    {
+      "term": "penundaan",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "project_delay",
+      "reason": "Project delay is a negative implementation outcome."
+    },
+    {
+      "term": "mangkrak",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "project_failure",
+      "reason": "Abandoned or stalled project is strongly negative."
+    },
+    {
+      "term": "mandek",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "project_failure",
+      "reason": "Stalled project or process is negative."
+    },
+    {
+      "term": "korupsi",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "governance_issue",
+      "reason": "Corruption is a strong negative governance issue."
+    },
+    {
+      "term": "pemadaman",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "service_reliability",
+      "reason": "Power outage is a negative electricity service condition."
+    },
+    {
+      "term": "padam",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "service_reliability",
+      "reason": "Electricity outage is negative unless explicitly reduced by context."
+    },
+    {
+      "term": "rendah",
+      "label": "negatif",
+      "weight": 1.2,
+      "category": "system_performance",
+      "reason": "Low performance or efficiency is negative."
+    },
+    {
+      "term": "gangguan",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "service_reliability",
+      "reason": "Technical or supply disturbance is negative."
+    },
+    {
+      "term": "kerusakan",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "device_failure",
+      "reason": "Damage is a strong negative condition."
+    },
+    {
+      "term": "kegagalan",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "project_failure",
+      "reason": "Failure is a negative outcome."
+    },
+    {
+      "term": "deforestasi",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "environmental_impact",
+      "reason": "Deforestation is a negative environmental impact."
+    },
+    {
+      "term": "krisis",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "environmental_impact",
+      "reason": "Crisis framing is negative."
+    },
+    {
+      "term": "ancaman",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "risk",
+      "reason": "Threat or risk is negative."
+    },
+    {
+      "term": "pemutusan",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "service_reliability",
+      "reason": "Disconnection or supply cut is negative."
+    },
+    {
+      "term": "gelap",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "lighting_quality",
+      "reason": "Darkness indicates lack of lighting access."
+    },
+    {
+      "term": "kegelapan",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "lighting_quality",
+      "reason": "Darkness indicates lack of lighting access."
+    },
+    {
+      "term": "tantangan",
+      "label": "negatif",
+      "weight": 0.9,
+      "category": "implementation_barrier",
+      "reason": "Challenge or barrier weakly indicates a negative implementation issue."
+    },
+    {
+      "term": "problema",
+      "label": "negatif",
+      "weight": 1.3,
+      "category": "implementation_barrier",
+      "reason": "Explicit problem framing is negative."
+    },
+    {
+      "term": "menipis",
+      "label": "negatif",
+      "weight": 1.2,
+      "category": "resource_risk",
+      "reason": "Resource depletion is a negative condition."
+    },
+    {
+      "term": "rakus",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "environmental_impact",
+      "reason": "Strong negative wording about land or resource use."
     }
   ]
 }

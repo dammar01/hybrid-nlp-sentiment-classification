@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "modifiers": {
     "negations": [
       {
@@ -192,6 +192,26 @@
         "term": "untungnya",
         "effect": "amplify_positive_after",
         "reason": "Explicit transition to positive evaluation."
+      },
+      {
+        "term": "sementara",
+        "effect": "prefer_after_clause",
+        "reason": "Comparative contrast where the later clause is usually more salient."
+      },
+      {
+        "term": "sedangkan",
+        "effect": "prefer_after_clause",
+        "reason": "Formal comparative contrast where the later clause is usually more salient."
+      },
+      {
+        "term": "justru",
+        "effect": "contradict_expectation",
+        "reason": "Contradiction marker that emphasizes the following evaluation."
+      },
+      {
+        "term": "padahal",
+        "effect": "prefer_after_clause",
+        "reason": "Contrast marker that often introduces a salient unmet expectation."
       }
     ]
   }

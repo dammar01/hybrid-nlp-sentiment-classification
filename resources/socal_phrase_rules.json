@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "phrase_rules": [
     {
       "phrase": "sangat membantu",
@@ -58,6 +58,265 @@
       "reason": "Sufficient lighting duration."
     },
     {
+      "phrase": "layanan listrik 24 jam",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "service_quality",
+      "reason": "Continuous electricity service is a strong positive access outcome."
+    },
+    {
+      "phrase": "listrik 24 jam",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "service_quality",
+      "reason": "Round-the-clock electricity access is positive."
+    },
+    {
+      "phrase": "dapat menikmati listrik",
+      "label": "positif",
+      "weight": 1.7,
+      "category": "access_benefit",
+      "reason": "Households being able to enjoy electricity is a positive access outcome."
+    },
+    {
+      "phrase": "menghadirkan listrik",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "access_benefit",
+      "reason": "Bringing electricity access to a community is positive."
+    },
+    {
+      "phrase": "menghadirkan penerangan",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "access_benefit",
+      "reason": "Bringing lighting access to a community is positive."
+    },
+    {
+      "phrase": "meningkatkan kesejahteraan",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "social_impact",
+      "reason": "Welfare improvement is a strong positive social impact."
+    },
+    {
+      "phrase": "kesejahteraan masyarakat",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "social_impact",
+      "reason": "Community welfare impact is positive."
+    },
+    {
+      "phrase": "meningkatkan kualitas hidup",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "social_impact",
+      "reason": "Quality-of-life improvement is a strong positive impact."
+    },
+    {
+      "phrase": "kualitas hidup",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "social_impact",
+      "reason": "Quality of life is a positive development outcome."
+    },
+    {
+      "phrase": "meningkatkan taraf hidup",
+      "label": "positif",
+      "weight": 1.8,
+      "category": "social_impact",
+      "reason": "Living-standard improvement is a strong positive impact."
+    },
+    {
+      "phrase": "pertumbuhan ekonomi",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "economic_impact",
+      "reason": "Economic growth is a positive development outcome."
+    },
+    {
+      "phrase": "aktivitas ekonomi",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "economic_impact",
+      "reason": "Electricity enabling economic activity is positive."
+    },
+    {
+      "phrase": "membuka peluang",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "economic_impact",
+      "reason": "Opening opportunities is positive."
+    },
+    {
+      "phrase": "lapangan kerja",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "economic_impact",
+      "reason": "Employment creation is a positive economic impact."
+    },
+    {
+      "phrase": "menekan biaya operasional",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "cost_benefit",
+      "reason": "Reducing operating costs is a positive economic impact."
+    },
+    {
+      "phrase": "mengurangi biaya",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "cost_benefit",
+      "reason": "Cost reduction is positive."
+    },
+    {
+      "phrase": "mengurangi emisi karbon",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "environmental_benefit",
+      "reason": "Carbon-emission reduction is a positive environmental impact."
+    },
+    {
+      "phrase": "energi bersih",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "environmental_benefit",
+      "reason": "Clean energy transition is positive in this domain."
+    },
+    {
+      "phrase": "transisi energi bersih",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "environmental_benefit",
+      "reason": "Clean energy transition is a positive policy direction."
+    },
+    {
+      "phrase": "aman dan nyaman",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "service_quality",
+      "reason": "Safe and comfortable electricity access is positive."
+    },
+    {
+      "phrase": "terima kasih",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "user_satisfaction",
+      "reason": "Thanks indicates positive sentiment."
+    },
+    {
+      "phrase": "puji syukur",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "user_satisfaction",
+      "reason": "Gratitude indicates positive sentiment."
+    },
+    {
+      "phrase": "rasa syukur",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "user_satisfaction",
+      "reason": "Gratitude indicates positive sentiment."
+    },
+    {
+      "phrase": "apresiasi yang tinggi",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "user_satisfaction",
+      "reason": "Strong appreciation indicates positive sentiment."
+    },
+    {
+      "phrase": "semakin sejahtera",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "social_impact",
+      "reason": "Increasing welfare is positive."
+    },
+    {
+      "phrase": "semakin maju",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "social_impact",
+      "reason": "Community progress is positive."
+    },
+    {
+      "phrase": "menurunkan frekuensi padam listrik",
+      "label": "positif",
+      "weight": 1.9,
+      "category": "service_reliability",
+      "reason": "Reducing outage frequency is a strong positive reliability outcome."
+    },
+    {
+      "phrase": "deteksi dini gangguan",
+      "label": "positif",
+      "weight": 1.7,
+      "category": "service_reliability",
+      "reason": "Early detection of technical disturbance is a positive reliability capability."
+    },
+    {
+      "phrase": "memungkinkan deteksi dini",
+      "label": "positif",
+      "weight": 1.6,
+      "category": "service_reliability",
+      "reason": "Enabling early detection is a positive system capability."
+    },
+    {
+      "phrase": "energi cadangan",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "service_reliability",
+      "reason": "Backup energy support is positive when used to maintain activity during outages."
+    },
+    {
+      "phrase": "penunjang keberlangsungan aktivitas",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "service_reliability",
+      "reason": "Supporting continuity of community activity is positive."
+    },
+    {
+      "phrase": "memudahkan operator",
+      "label": "positif",
+      "weight": 1.4,
+      "category": "service_reliability",
+      "reason": "Operational ease is a positive monitoring and control capability."
+    },
+    {
+      "phrase": "pemantauan dan pengendalian",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "service_reliability",
+      "reason": "Monitoring and control capability is positive in grid reliability contexts."
+    },
+    {
+      "phrase": "akhirnya bisa merasakan",
+      "label": "positif",
+      "weight": 1.5,
+      "category": "access_benefit",
+      "reason": "Finally being able to experience electricity access is positive."
+    },
+    {
+      "phrase": "perubahan signifikan",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "social_impact",
+      "reason": "Significant positive change after electrification."
+    },
+    {
+      "phrase": "dana hibah",
+      "label": "positif",
+      "weight": 1.3,
+      "category": "program_support",
+      "reason": "Grant funding is positive support for electrification programs."
+    },
+    {
+      "phrase": "alangkah baiknya",
+      "label": "positif",
+      "weight": 1.2,
+      "category": "recommendation",
+      "reason": "Constructive recommendation phrasing indicates a positive proposed remedy."
+    },
+    {
       "phrase": "baterai cepat habis",
       "label": "negatif",
       "weight": 1.8,
@@ -105,6 +364,209 @@
       "weight": 1.5,
       "category": "maintenance",
       "reason": "Lack of maintenance support."
+    },
+    {
+      "phrase": "belum teraliri listrik",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "access_gap",
+      "reason": "Village or household not yet electrified is a strong negative access condition."
+    },
+    {
+      "phrase": "belum dialiri listrik",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "access_gap",
+      "reason": "Village or household not yet electrified is a strong negative access condition."
+    },
+    {
+      "phrase": "belum ada listrik",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "access_gap",
+      "reason": "Lack of electricity access is negative."
+    },
+    {
+      "phrase": "tidak ada listrik",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "access_gap",
+      "reason": "No electricity access is strongly negative."
+    },
+    {
+      "phrase": "listrik tidak ada",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "access_gap",
+      "reason": "No electricity access is strongly negative."
+    },
+    {
+      "phrase": "listrik saja jarang",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "access_gap",
+      "reason": "Rare electricity access is negative."
+    },
+    {
+      "phrase": "jauh dari optimal",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "system_performance",
+      "reason": "Far below optimal performance is negative."
+    },
+    {
+      "phrase": "di bawah standar",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "system_performance",
+      "reason": "Below-standard performance is negative."
+    },
+    {
+      "phrase": "kurang optimal",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "system_performance",
+      "reason": "Suboptimal operation is negative."
+    },
+    {
+      "phrase": "keterbatasan infrastruktur",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "accessibility",
+      "reason": "Infrastructure limitation is a negative barrier."
+    },
+    {
+      "phrase": "keterbatasan akses",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "accessibility",
+      "reason": "Access limitation is a negative barrier."
+    },
+    {
+      "phrase": "menjadi kendala",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "accessibility",
+      "reason": "A factor becoming an obstacle is negative."
+    },
+    {
+      "phrase": "ancaman pemutusan kabel",
+      "label": "negatif",
+      "weight": 1.8,
+      "category": "service_reliability",
+      "reason": "Threat of cable disconnection is strongly negative."
+    },
+    {
+      "phrase": "pemutusan kabel",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "service_reliability",
+      "reason": "Cable disconnection is negative."
+    },
+    {
+      "phrase": "rakus lahan",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "environmental_impact",
+      "reason": "Land-intensive energy project framing is negative."
+    },
+    {
+      "phrase": "kerusakan hutan",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "environmental_impact",
+      "reason": "Forest damage is a negative environmental impact."
+    },
+    {
+      "phrase": "memicu krisis",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "environmental_impact",
+      "reason": "Triggering crisis is negative."
+    },
+    {
+      "phrase": "mahalnya biaya",
+      "label": "negatif",
+      "weight": 1.5,
+      "category": "cost_burden",
+      "reason": "High cost is a burden."
+    },
+    {
+      "phrase": "biaya operasional cukup tinggi",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "cost_burden",
+      "reason": "High operating cost is a negative burden."
+    },
+    {
+      "phrase": "membutuhkan biaya operasional",
+      "label": "negatif",
+      "weight": 1.4,
+      "category": "cost_burden",
+      "reason": "Operating cost requirement is negative when framed as a burden."
+    },
+    {
+      "phrase": "sebelum terjadi pemutusan pasokan listrik",
+      "label": "netral",
+      "weight": 0.0,
+      "category": "mitigation_context",
+      "reason": "Potential disconnection is mentioned as a prevented event, not the actual sentiment target."
+    },
+    {
+      "phrase": "tipis harapan",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "social_impact",
+      "reason": "Thin hope indicates pessimistic sentiment."
+    },
+    {
+      "phrase": "proyek ini sangat rakus lahan",
+      "label": "negatif",
+      "weight": 1.9,
+      "category": "environmental_impact",
+      "reason": "Strong negative claim about land use."
+    },
+    {
+      "phrase": "belum menikmati listrik",
+      "label": "negatif",
+      "weight": 1.7,
+      "category": "access_gap",
+      "reason": "Not yet enjoying electricity access is a negative access condition."
+    },
+    {
+      "phrase": "hanya bisa menikmati listrik",
+      "label": "negatif",
+      "weight": 1.6,
+      "category": "access_gap",
+      "reason": "Only limited electricity availability is negative."
+    },
+    {
+      "phrase": "informasi pemadaman listrik",
+      "label": "netral",
+      "weight": 0.0,
+      "category": "service_notice",
+      "reason": "Outage notice wording is informational rather than evaluative."
+    },
+    {
+      "phrase": "jadwal pemadaman listrik",
+      "label": "netral",
+      "weight": 0.0,
+      "category": "service_notice",
+      "reason": "Outage schedule wording is informational rather than evaluative."
+    },
+    {
+      "phrase": "tegangan rendah",
+      "label": "netral",
+      "weight": 0.0,
+      "category": "technical_term",
+      "reason": "Low-voltage network is a technical term, not a negative evaluation."
+    },
+    {
+      "phrase": "kondisi normal tanpa gangguan",
+      "label": "netral",
+      "weight": 0.0,
+      "category": "technical_term",
+      "reason": "Normal operating condition without disturbance is technical context."
     }
   ]
 }
