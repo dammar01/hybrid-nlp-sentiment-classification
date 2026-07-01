@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import random
+import inspect
+import importlib.util
+import sys
+import types
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -42,7 +46,9 @@ class IndoBERTTrainingService:
             raise ValueError("Training fold kosong")
 
         train_rows, eval_rows = self._internal_train_eval_split(train_df)
-        class_weights = self._class_weights([int(row[label_column]) for row in train_rows])
+        class_weights = self._class_weights(
+            [int(row[label_column]) for row in train_rows]
+        )
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -73,39 +79,28 @@ class IndoBERTTrainingService:
         )
 
         use_cuda = torch.cuda.is_available()
-        args = transformers.TrainingArguments(
-            output_dir=str(output_dir / "trainer"),
-            learning_rate=float(self.training_config["learning_rate"]),
-            per_device_train_batch_size=int(self.training_config["train_batch_size"]),
-            per_device_eval_batch_size=int(self.training_config["eval_batch_size"]),
-            num_train_epochs=int(self.training_config["max_epochs"]),
-            warmup_ratio=float(self.training_config["warmup_ratio"]),
-            weight_decay=float(self.training_config["weight_decay"]),
-            evaluation_strategy="epoch",
-            save_strategy="epoch",
-            load_best_model_at_end=True,
-            metric_for_best_model=str(self.training_config["metric_for_best_model"]),
-            greater_is_better=True,
-            seed=int(self.training_config["seed"]),
-            fp16=bool(use_cuda),
-            report_to=[],
-            save_total_limit=2,
+        args = self._training_arguments(
+            transformers=transformers,
+            output_dir=output_dir / "trainer",
+            use_cuda=use_cuda,
         )
         trainer = _WeightedTrainer(
             class_weights=torch.tensor(class_weights, dtype=torch.float),
-            compute_metrics=self._build_compute_metrics(),
-            model=model,
-            args=args,
-            train_dataset=train_dataset,
-            eval_dataset=eval_dataset,
-            tokenizer=tokenizer,
-            callbacks=[
-                transformers.EarlyStoppingCallback(
-                    early_stopping_patience=int(
-                        self.training_config["early_stopping_patience"]
+            **self._trainer_kwargs(
+                tokenizer=tokenizer,
+                compute_metrics=self._build_compute_metrics(),
+                model=model,
+                args=args,
+                train_dataset=train_dataset,
+                eval_dataset=eval_dataset,
+                callbacks=[
+                    transformers.EarlyStoppingCallback(
+                        early_stopping_patience=int(
+                            self.training_config["early_stopping_patience"]
+                        )
                     )
-                )
-            ],
+                ],
+            ),
         )
         trainer.train()
 
@@ -120,10 +115,45 @@ class IndoBERTTrainingService:
             "internal_eval_rows": len(eval_rows),
             "class_weights": class_weights,
             "training_config": self.training_config,
-            "metrics": {key: float(value) for key, value in metrics.items() if isinstance(value, (int, float))},
+            "metrics": {
+                key: float(value)
+                for key, value in metrics.items()
+                if isinstance(value, (int, float))
+            },
         }
         ArtifactService().save_json(manifest, output_dir / "model_manifest.json")
         return manifest
+
+    def _trainer_kwargs(
+        self,
+        *,
+        tokenizer: Any,
+        compute_metrics: Any,
+        model: Any,
+        args: Any,
+        train_dataset: Any,
+        eval_dataset: Any,
+        callbacks: list[Any],
+    ) -> dict[str, Any]:
+        import transformers
+
+        _disable_local_datasets_shadow(transformers)
+        from transformers import Trainer
+
+        parameters = inspect.signature(Trainer.__init__).parameters
+        kwargs: dict[str, Any] = {
+            "compute_metrics": compute_metrics,
+            "model": model,
+            "args": args,
+            "train_dataset": train_dataset,
+            "eval_dataset": eval_dataset,
+            "callbacks": callbacks,
+        }
+        if "processing_class" in parameters:
+            kwargs["processing_class"] = tokenizer
+        elif "tokenizer" in parameters:
+            kwargs["tokenizer"] = tokenizer
+        return {key: value for key, value in kwargs.items() if key in parameters}
 
     @staticmethod
     def _load_backend() -> tuple[Any, Any]:
@@ -134,7 +164,53 @@ class IndoBERTTrainingService:
             raise ImportError(
                 "Dependency fine-tuning belum tersedia. Install torch, transformers, accelerate, scikit-learn."
             ) from exc
+        _disable_local_datasets_shadow(transformers)
         return torch, transformers
+
+    def _training_arguments(
+        self,
+        *,
+        transformers: Any,
+        output_dir: Path,
+        use_cuda: bool,
+    ) -> Any:
+        parameters = inspect.signature(
+            transformers.TrainingArguments.__init__
+        ).parameters
+        kwargs: dict[str, object] = {
+            "output_dir": str(output_dir),
+            "learning_rate": float(self.training_config["learning_rate"]),
+            "per_device_train_batch_size": int(
+                self.training_config["train_batch_size"]
+            ),
+            "per_device_eval_batch_size": int(
+                self.training_config["eval_batch_size"]
+            ),
+            "num_train_epochs": int(self.training_config["max_epochs"]),
+            "warmup_ratio": float(self.training_config["warmup_ratio"]),
+            "weight_decay": float(self.training_config["weight_decay"]),
+            "load_best_model_at_end": True,
+            "metric_for_best_model": str(
+                self.training_config["metric_for_best_model"]
+            ),
+            "greater_is_better": True,
+            "seed": int(self.training_config["seed"]),
+            "fp16": bool(use_cuda),
+            "report_to": [],
+            "save_total_limit": 2,
+        }
+        if "evaluation_strategy" in parameters:
+            kwargs["evaluation_strategy"] = "epoch"
+        elif "eval_strategy" in parameters:
+            kwargs["eval_strategy"] = "epoch"
+
+        if "save_strategy" in parameters:
+            kwargs["save_strategy"] = "epoch"
+
+        supported_kwargs = {
+            key: value for key, value in kwargs.items() if key in parameters
+        }
+        return transformers.TrainingArguments(**supported_kwargs)
 
     @staticmethod
     def _set_seed(torch: Any, seed: int) -> None:
@@ -152,7 +228,9 @@ class IndoBERTTrainingService:
             for label_id in sorted(config.ID2LABEL)
         ]
 
-    def _internal_train_eval_split(self, train_df: pl.DataFrame) -> tuple[list[dict], list[dict]]:
+    def _internal_train_eval_split(
+        self, train_df: pl.DataFrame
+    ) -> tuple[list[dict], list[dict]]:
         rows = train_df.to_dicts()
         labels = [int(row["label_id"]) for row in rows]
         try:
@@ -177,13 +255,17 @@ class IndoBERTTrainingService:
                 from sklearn.metrics import balanced_accuracy_score, f1_score
                 import numpy as np
             except ImportError as exc:
-                raise ImportError("scikit-learn dan numpy wajib untuk metric training") from exc
+                raise ImportError(
+                    "scikit-learn dan numpy wajib untuk metric training"
+                ) from exc
 
             logits, labels = eval_pred
             predictions = np.argmax(logits, axis=-1)
             return {
                 "balanced_accuracy": balanced_accuracy_score(labels, predictions),
-                "macro_f1": f1_score(labels, predictions, average="macro", zero_division=0),
+                "macro_f1": f1_score(
+                    labels, predictions, average="macro", zero_division=0
+                ),
             }
 
         return compute_metrics
@@ -225,6 +307,9 @@ class _WeightedTrainer:
 
     def __new__(cls, *args, class_weights, **kwargs):
         import torch
+        import transformers
+
+        _disable_local_datasets_shadow(transformers)
         from transformers import Trainer
 
         class WeightedTrainer(Trainer):
@@ -238,7 +323,63 @@ class _WeightedTrainer:
                 logits = outputs.get("logits")
                 weights = self._class_weights.to(logits.device)
                 loss_fn = torch.nn.CrossEntropyLoss(weight=weights)
-                loss = loss_fn(logits.view(-1, model.config.num_labels), labels.view(-1))
+                loss = loss_fn(
+                    logits.view(-1, model.config.num_labels), labels.view(-1)
+                )
                 return (loss, outputs) if return_outputs else loss
 
         return WeightedTrainer(*args, **kwargs)
+
+
+def _disable_local_datasets_shadow(transformers: Any) -> None:
+    """Avoid treating the repo's data folder as HuggingFace datasets package."""
+    spec = importlib.util.find_spec("datasets")
+    loaded = sys.modules.get("datasets")
+    if spec is None and loaded is None:
+        return
+
+    local_datasets_dir = config.DATASETS.resolve()
+    candidate_paths = []
+    if spec and spec.origin:
+        candidate_paths.append(Path(spec.origin))
+    if spec:
+        candidate_paths.extend(
+            Path(path) for path in spec.submodule_search_locations or []
+        )
+    loaded_file = getattr(loaded, "__file__", None)
+    if loaded_file:
+        candidate_paths.append(Path(loaded_file))
+    loaded_path = getattr(loaded, "__path__", None)
+    if loaded_path:
+        candidate_paths.extend(Path(path) for path in loaded_path)
+
+    is_local_data_folder = any(
+        path.resolve() == local_datasets_dir
+        or local_datasets_dir in path.resolve().parents
+        for path in candidate_paths
+    )
+    if not is_local_data_folder:
+        return
+
+    if loaded is not None and hasattr(loaded, "Dataset"):
+        if getattr(loaded, "__spec__", None) is None:
+            loaded.__spec__ = importlib.util.spec_from_loader("datasets", loader=None)
+        return
+
+    class _UnavailableHFDataset:
+        pass
+
+    stub = types.ModuleType("datasets")
+    stub.Dataset = _UnavailableHFDataset
+    stub.IterableDataset = _UnavailableHFDataset
+    stub.__file__ = str(local_datasets_dir)
+    stub.__path__ = []
+    stub.__spec__ = importlib.util.spec_from_loader("datasets", loader=None)
+    sys.modules["datasets"] = stub
+
+    import_utils = getattr(getattr(transformers, "utils", None), "import_utils", None)
+    if import_utils is not None and hasattr(import_utils, "_datasets_available"):
+        import_utils._datasets_available = False
+    utils = getattr(transformers, "utils", None)
+    if utils is not None and hasattr(utils, "_datasets_available"):
+        utils._datasets_available = False

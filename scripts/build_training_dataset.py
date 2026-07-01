@@ -126,12 +126,9 @@ def build_training_dataset(
 ) -> tuple[pl.DataFrame, dict[str, object]]:
     golden_rows = load_golden_rows(golden_dir)
     if metadata_paths is None:
-        metadata_paths = [
-            config.RAW_CANDIDATE_SCHEMA_PATH,
-            *sorted(
-                (config.GOLDEN_DATASET_DIR).glob("*candidate_labeling_dataset.csv")
-            ),
-        ]
+        metadata_paths = sorted(
+            (config.OUTPUTS / "datasets").glob("*candidate_labeling_dataset.csv")
+        )
     exact, base = load_metadata_rows(metadata_paths)
     source_service = SourceBlacklistService.from_paths()
     preprocessing = PreprocessingService()
@@ -227,7 +224,10 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         action="append",
         default=None,
-        help="CSV metadata tambahan. Dapat diulang.",
+        help=(
+            "CSV metadata pengganti. Default: "
+            "outputs/datasets/*candidate_labeling_dataset.csv."
+        ),
     )
     parser.add_argument("--allow-gate-failure", action="store_true")
     return parser.parse_args()
