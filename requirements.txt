@@ -3,8 +3,12 @@
 # Catatan: TIDAK menggunakan pandas (seluruh operasi DataFrame via Polars).
 
 polars>=1.41
+numpy>=1.26
 matplotlib>=3.8
-
-# Opsional untuk backend IndoBERT. Install manual jika backend indobert dipakai:
-# transformers>=4.40
-# torch>=2.2
+torch>=2.2
+transformers>=4.40
+accelerate>=0.29
+scikit-learn>=1.4
+safetensors>=0.4
+pyarrow>=15.0
+scipy>=1.12

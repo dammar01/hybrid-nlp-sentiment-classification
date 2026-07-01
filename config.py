@@ -20,6 +20,7 @@ ARTIFACTS: Path = OUTPUTS / "artifacts"     # ringkasan / metadata hasil olah
 RESULTS: Path = OUTPUTS / "results"
 FIGURES: Path = OUTPUTS / "figures"
 REPORTS: Path = OUTPUTS / "reports"
+OUTPUT_DATASETS: Path = OUTPUTS / "datasets"
 
 # File kamus
 SLANG_DICT_PATH: Path = RESOURCES / "slang.json"
@@ -38,6 +39,12 @@ CALIBRATION_DATASET_PATH: Path = OUTPUTS / "datasets" / "tokopedia_calibration.c
 CALIBRATION_SUMMARY_PATH: Path = ARTIFACTS / "tokopedia_calibration_summary.json"
 NON_LLM_RESULTS_PATH: Path = RESULTS / "scenario_without_llm.csv"
 NON_LLM_METRICS_PATH: Path = ARTIFACTS / "scenario_without_llm_metrics.json"
+RAW_CANDIDATE_SCHEMA_PATH: Path = DATASETS / "raw_candidate_schema.csv"
+GOLDEN_DATASET_DIR: Path = DATASETS / "golden"
+TRAINING_DATASET_PATH: Path = OUTPUT_DATASETS / "training_dataset.parquet"
+TRAINING_DATASET_WITH_SPLIT_PATH: Path = OUTPUT_DATASETS / "training_dataset_with_split.parquet"
+FIXED_SPLIT_ASSIGNMENT_PATH: Path = ARTIFACTS / "fixed_group_split_assignment.json"
+FIXED_SPLIT_MANIFEST_PATH: Path = ARTIFACTS / "fixed_group_split_manifest.json"
 
 # Model lokal
 INDOBERT_MODEL_PATH: Path = ROOT / "model" / "indobert-base-p2"
@@ -82,6 +89,14 @@ COL_FINAL_LABEL: str = "final_label"
 REQUIRED_COLUMNS: tuple[str, ...] = (COL_ID, COL_SOURCE, COL_TEXT)
 
 # ---------------------------------------------------------------------------
+# Reproducibility dan label sentimen
+# ---------------------------------------------------------------------------
+GLOBAL_SEED: int = 42
+LABEL2ID: dict[str, int] = {"negatif": 0, "netral": 1, "positif": 2}
+ID2LABEL: dict[int, str] = {value: key for key, value in LABEL2ID.items()}
+SENTIMENT_LABELS: tuple[str, ...] = ("negatif", "netral", "positif")
+
+# ---------------------------------------------------------------------------
 # Negasi
 # ---------------------------------------------------------------------------
 # Bentuk baku kata negasi. WAJIB dipertahankan oleh preprocessing dan TIDAK
@@ -91,12 +106,60 @@ NEGATION_WORDS: tuple[str, ...] = ("tidak", "bukan", "belum", "jangan")
 # ---------------------------------------------------------------------------
 # Skenario non-LLM
 # ---------------------------------------------------------------------------
-SENTIMENT_LABELS: tuple[str, ...] = ("positif", "negatif", "netral")
 RULE_CONFIDENCE_ALPHA: float = 0.35
 SEMANTIC_SIMILARITY_BETA: float = 0.35
 EMBEDDING_DIMENSION: int = 128
 CLUSTER_SIMILARITY_THRESHOLD: float = 0.72
 MIN_CLUSTER_SIZE: int = 3
+
+# ---------------------------------------------------------------------------
+# IndoBERT hybrid experiment
+# ---------------------------------------------------------------------------
+EXPERIMENT_CONFIG: dict[str, object] = {
+    "experiment_prefix": "hybrid_indobert_socal",
+    "artifact_root": str(ARTIFACTS / "experiments"),
+}
+
+SPLIT_CONFIG: dict[str, object] = {
+    "n_splits": 6,
+    "test_fold": 0,
+    "calibration_fold": 1,
+    "train_folds": (2, 3, 4, 5),
+    "random_state": GLOBAL_SEED,
+}
+
+TRAINING_CONFIG: dict[str, object] = {
+    "seed": GLOBAL_SEED,
+    "learning_rate": 2e-5,
+    "train_batch_size": 8,
+    "eval_batch_size": 16,
+    "max_length": 256,
+    "max_epochs": 10,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "early_stopping_patience": 2,
+    "metric_for_best_model": "balanced_accuracy",
+}
+
+CALIBRATION_CONFIG: dict[str, object] = {
+    "initial_temperature": 1.0,
+    "max_iter": 200,
+    "ece_bins": 10,
+}
+
+UNCERTAINTY_WEIGHT_GRID: tuple[dict[str, float], ...] = (
+    {"wc": 0.50, "wm": 0.30, "wd": 0.20},
+    {"wc": 0.40, "wm": 0.40, "wd": 0.20},
+    {"wc": 0.45, "wm": 0.25, "wd": 0.30},
+    {"wc": 0.34, "wm": 0.33, "wd": 0.33},
+)
+
+FUSION_POLICY_GRID: dict[str, tuple[float, ...]] = {
+    "high_confidence_threshold": (0.70, 0.75, 0.80, 0.85),
+    "low_confidence_threshold": (0.45, 0.50, 0.55, 0.60),
+    "rule_confidence_threshold": (0.35, 0.45, 0.55, 0.65),
+    "uncertainty_review_threshold": (0.50, 0.60, 0.70, 0.80),
+}
 
 # ---------------------------------------------------------------------------
 # Rule-based lexicon contract
