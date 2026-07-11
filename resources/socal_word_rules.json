@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "word_rules": [
     {
       "term": "membantu",
@@ -56,13 +56,6 @@
       "weight": 1.2,
       "category": "cost_benefit",
       "reason": "Aid received without direct cost is generally positive."
-    },
-    {
-      "term": "nyala",
-      "label": "positif",
-      "weight": 1.2,
-      "category": "device_function",
-      "reason": "Device or lamp is functioning."
     },
     {
       "term": "berfungsi",
@@ -137,16 +130,16 @@
     {
       "term": "meningkat",
       "label": "positif",
-      "weight": 1.1,
+      "weight": 0.6,
       "category": "improvement",
-      "reason": "Increase or improvement is positive in electrification impact contexts."
+      "reason": "Increase or improvement is positive in electrification impact contexts. [calibrated v1.2.0: dampened — appears in neutral policy/statistical text]"
     },
     {
       "term": "meningkatkan",
       "label": "positif",
-      "weight": 1.1,
+      "weight": 0.7,
       "category": "improvement",
-      "reason": "Action to improve welfare, service, or system quality."
+      "reason": "Action to improve welfare, service, or system quality. [calibrated v1.2.0: dampened — appears in neutral policy/statistical text]"
     },
     {
       "term": "memperkuat",
@@ -165,9 +158,9 @@
     {
       "term": "mendukung",
       "label": "positif",
-      "weight": 1.0,
+      "weight": 0.7,
       "category": "support",
-      "reason": "Support for development, transition, or service delivery is positive."
+      "reason": "Support for development, transition, or service delivery is positive. [calibrated v1.2.0: dampened — appears in neutral policy/statistical text]"
     },
     {
       "term": "mendorong",
@@ -200,9 +193,9 @@
     {
       "term": "kesejahteraan",
       "label": "positif",
-      "weight": 1.3,
+      "weight": 0.9,
       "category": "social_impact",
-      "reason": "Welfare is a positive electrification impact."
+      "reason": "Welfare is a positive electrification impact. [calibrated v1.2.0: dampened — appears in neutral policy/statistical text]"
     },
     {
       "term": "pemerataan",

@@ -70,6 +70,73 @@ class ClusteringService:
             ),
         )
 
+    def cluster_hdbscan(
+        self,
+        vectors: list[list[float]],
+        *,
+        min_cluster_size: int | None = None,
+        min_samples: int | None = None,
+        metric: str = "euclidean",
+        pca_components: int | None = None,
+    ) -> dict[str, list]:
+        """Density clustering HDBSCAN untuk ekstraksi topik.
+
+        Mengembalikan label klaster (-1 = noise, bukan topik) beserta
+        probabilitas keanggotaan. Vektor idealnya sudah ter-L2-norm sehingga
+        metric euclidean setara cosine. PCA opsional meredam curse-of-dimension.
+        """
+        import numpy as np
+        from sklearn.cluster import HDBSCAN
+
+        matrix = np.asarray(vectors, dtype=float)
+        if matrix.ndim != 2 or matrix.shape[0] == 0:
+            return {"labels": [], "probabilities": []}
+
+        if (
+            pca_components
+            and pca_components > 0
+            and pca_components < matrix.shape[1]
+            and matrix.shape[0] > pca_components
+        ):
+            from sklearn.decomposition import PCA
+
+            matrix = PCA(
+                n_components=pca_components, random_state=config.GLOBAL_SEED
+            ).fit_transform(matrix)
+
+        clusterer = HDBSCAN(
+            min_cluster_size=int(min_cluster_size or self.min_cluster_size),
+            min_samples=int(min_samples) if min_samples else None,
+            metric=metric,
+            copy=True,
+        )
+        labels = clusterer.fit_predict(matrix)
+        probabilities = getattr(clusterer, "probabilities_", None)
+        prob_list = (
+            [round(float(value), 6) for value in probabilities]
+            if probabilities is not None
+            else [0.0] * len(labels)
+        )
+        return {"labels": [int(value) for value in labels], "probabilities": prob_list}
+
+    def attach_hdbscan(
+        self,
+        df: pl.DataFrame,
+        vectors: list[list[float]],
+        **kwargs,
+    ) -> pl.DataFrame:
+        """Jalankan HDBSCAN lalu lampirkan cluster_id, size, dan probabilitas."""
+        if len(vectors) != df.height:
+            raise ValueError("Jumlah vector harus sama dengan jumlah baris DataFrame")
+        result = self.cluster_hdbscan(vectors, **kwargs)
+        labels = result["labels"]
+        sizes = Counter(label for label in labels if label != -1)
+        return df.with_columns(
+            pl.Series(config.COL_CLUSTER_ID, labels),
+            pl.Series("cluster_size", [sizes.get(label, 0) for label in labels]),
+            pl.Series("cluster_probability", result["probabilities"]),
+        )
+
     def _connected_components(self, vectors: list[list[float]]) -> list[int]:
         centroids: list[list[float]] = []
         counts: list[int] = []

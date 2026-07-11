@@ -145,7 +145,7 @@ def build_summary(
     final_labels = result_df["final_sentiment"].to_list() if "final_sentiment" in result_df.columns else []
     invalid_labels = sorted(set(final_labels) - set(config.SENTIMENT_LABELS))
     weak_overrides = result_df.filter(
-        (pl.col("fusion_action") == "rule_override")
+        (pl.col("fusion_action") == "rule_confident")
         & pl.col(config.COL_RULE_STATUS).is_in(
             [config.RULE_STATUS_WEAK, config.RULE_STATUS_UNKNOWN]
         )

@@ -52,48 +52,60 @@ class FusionService:
         return df.hstack(rows)
 
     def fuse_row(self, row: dict[str, Any]) -> dict[str, object]:
+        """Fusi simetris IndoBERT <-> rule tanpa pembebanan salah satu metode.
+
+        Prinsip: metode yang *yakin* yang menentukan. `rule_valid` (status
+        `detected`) sudah dikalibrasi ke precision-on-fired 100% pada golden,
+        jadi rule detected setara-yakin dengan IndoBERT high-confidence.
+        - rule abstain (weak/unknown)  -> hanya IndoBERT punya sinyal
+        - sepakat                       -> label yang disepakati
+        - konflik & IndoBERT high-conf  -> dua-duanya yakin -> tandai review/LLM
+        - konflik & IndoBERT belum yakin-> rule detected (100% precise) unggul
+        """
         bert_label = str(row.get("bert_label") or "netral")
         rule_label = str(row.get(config.COL_RULE_LABEL) or "netral")
         bert_confidence = self._float(row.get("bert_confidence"))
-        rule_confidence = self._float(row.get(config.COL_RULE_CONFIDENCE))
         uncertainty = self._float(row.get("routing_uncertainty_score"))
         rule_valid = AmbiguityService.rule_has_valid_evidence(row)
         high_threshold = float(self.policy["high_confidence_threshold"])
-        low_threshold = float(self.policy["low_confidence_threshold"])
-        rule_threshold = float(self.policy["rule_confidence_threshold"])
         review_threshold = float(self.policy["uncertainty_review_threshold"])
 
-        if bert_label == rule_label and rule_valid:
+        conflict = False
+        requires_llm = False
+        if not rule_valid:
+            final_label = bert_label
+            action = "bert_only"
+            reason = "Rule abstain (weak/unknown); hanya IndoBERT bersinyal."
+        elif bert_label == rule_label:
             final_label = bert_label
             action = "agreement"
-            reason = "IndoBERT dan rule valid sepakat."
-        elif not rule_valid:
-            final_label = bert_label
-            action = "bert_rule_invalid"
-            reason = "Rule weak/unknown/tanpa evidence valid; gunakan IndoBERT."
-        elif bert_confidence >= high_threshold:
-            final_label = bert_label
-            action = "bert_high_confidence"
-            reason = "Confidence IndoBERT tinggi; gunakan IndoBERT."
-        elif (
-            bert_confidence <= low_threshold
-            and rule_confidence >= rule_threshold
-            and bert_label != rule_label
-            and rule_label != "netral"
-        ):
-            final_label = rule_label
-            action = "rule_override"
-            reason = "IndoBERT rendah, rule evidence kuat, dan prediksi konflik."
+            reason = "IndoBERT dan rule detected sepakat."
         else:
-            final_label = bert_label
-            action = "bert_default"
-            reason = "Tidak memenuhi syarat override; gunakan IndoBERT."
+            conflict = True
+            if bert_confidence >= high_threshold:
+                final_label = bert_label
+                action = "conflict_both_confident"
+                reason = (
+                    "IndoBERT high-confidence dan rule detected sama-sama yakin "
+                    "namun berbeda; butuh adjudikasi (LLM pada skenario-2)."
+                )
+                requires_llm = True
+            else:
+                final_label = rule_label
+                action = "rule_confident"
+                reason = (
+                    "Rule detected (kalibrasi precision 100%) unggul; "
+                    "IndoBERT belum cukup yakin."
+                )
 
+        needs_review = bool(uncertainty >= review_threshold) or requires_llm
         return {
             "fusion_action": action,
             "fusion_reason": reason,
             "final_sentiment": final_label,
-            "needs_review": bool(uncertainty >= review_threshold),
+            "cross_method_conflict_final": conflict,
+            "requires_llm": requires_llm,
+            "needs_review": needs_review,
         }
 
     def select_policy(

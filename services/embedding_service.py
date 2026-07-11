@@ -28,10 +28,12 @@ class EmbeddingService:
         backend: str = "hashing",
         dimension: int = config.EMBEDDING_DIMENSION,
         model_path: str | Path = config.INDOBERT_MODEL_PATH,
+        pooling: str = "cls",
     ) -> None:
         self.backend = backend
         self.dimension = dimension
         self.model_path = Path(model_path)
+        self.pooling = pooling  # 'cls' | 'mean' (mean-pool lebih baik untuk topik)
         self._tokenizer = None
         self._model = None
 
@@ -98,7 +100,15 @@ class EmbeddingService:
         )
         with torch.no_grad():
             outputs = self._model(**inputs)
-        vector = outputs.last_hidden_state[:, 0, :].squeeze(0).tolist()
+        hidden = outputs.last_hidden_state  # (1, seq, hidden)
+        if self.pooling == "mean":
+            mask = inputs["attention_mask"].unsqueeze(-1).type_as(hidden)
+            summed = (hidden * mask).sum(dim=1)
+            counts = mask.sum(dim=1).clamp(min=1e-9)
+            pooled = (summed / counts).squeeze(0)
+        else:  # 'cls'
+            pooled = hidden[:, 0, :].squeeze(0)
+        vector = pooled.tolist()
         norm = math.sqrt(sum(float(value) * float(value) for value in vector))
         if norm == 0:
             return [float(value) for value in vector]

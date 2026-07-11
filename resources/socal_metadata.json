@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "method": "SO-CAL-inspired lexicon rule engine",
   "method_reference": "Taboada et al. 2011, Lexicon-Based Methods for Sentiment Analysis",
   "score_scale": {
@@ -12,5 +12,11 @@
   },
   "negation_shift": 1.6,
   "negative_weight": 1.5,
-  "repetition_weighting": true
+  "repetition_weighting": true,
+  "calibration": {
+    "target": "precision-on-fired == 1.0 on datasets/golden",
+    "detected_threshold": 0.85,
+    "golden_precision": 1.0,
+    "golden_coverage": 0.217
+  }
 }

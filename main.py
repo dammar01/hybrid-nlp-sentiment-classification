@@ -51,6 +51,33 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Batasi jumlah row runtime yang diproses dari awal input CSV.",
     )
+
+    runtime_llm = subparsers.add_parser("run-with-llm")
+    runtime_llm.add_argument("--input", type=Path, default=config.RAW_CANDIDATE_SCHEMA_PATH)
+    runtime_llm.add_argument("--model-dir", type=Path, required=True)
+    runtime_llm.add_argument("--calibration-artifact", type=Path, required=True)
+    runtime_llm.add_argument("--fusion-policy", type=Path, required=True)
+    runtime_llm.add_argument("--output-dir", type=Path, required=True)
+    runtime_llm.add_argument(
+        "--llm-model",
+        type=Path,
+        default=config.QWEN_GGUF_MODEL_PATH,
+        help="Path file GGUF Qwen3-8B untuk lapisan interpretasi LLM.",
+    )
+    runtime_llm.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Batasi jumlah row runtime yang diproses dari awal input CSV.",
+    )
+
+    topics = subparsers.add_parser("run-topics")
+    topics.add_argument("--input", type=Path, required=True,
+                        help="Prediksi skenario (.parquet/.csv) atau input teks.")
+    topics.add_argument("--output-dir", type=Path, required=True)
+    topics.add_argument("--model-dir", type=Path, default=config.INDOBERT_MODEL_PATH,
+                        help="Model IndoBERT sumber embedding topik.")
+    topics.add_argument("--limit", type=int, default=None)
     return parser.parse_args()
 
 
@@ -119,6 +146,32 @@ def main() -> None:
             limit=args.limit,
         )
         print(f"Predictions: {result['predictions_path']}")
+        print(f"Summary: {result['summary_path']}")
+    elif args.command == "run-with-llm":
+        from pipelines.scenario_with_llm import run
+
+        result = run(
+            input_path=args.input,
+            model_dir=args.model_dir,
+            calibration_artifact_path=args.calibration_artifact,
+            fusion_policy_path=args.fusion_policy,
+            output_dir=args.output_dir,
+            llm_model_path=args.llm_model,
+            limit=args.limit,
+        )
+        print(f"Predictions: {result['predictions_path']}")
+        print(f"Summary: {result['summary_path']}")
+    elif args.command == "run-topics":
+        from pipelines.topic_pipeline import run
+
+        result = run(
+            input_path=args.input,
+            output_dir=args.output_dir,
+            model_dir=args.model_dir,
+            limit=args.limit,
+        )
+        print(f"Topics: {result['n_topics']} (noise={result['n_noise']})")
+        print(f"Assignments: {result['assignments_path']}")
         print(f"Summary: {result['summary_path']}")
 
 

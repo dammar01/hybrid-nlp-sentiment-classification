@@ -51,6 +51,12 @@ FIXED_SPLIT_MANIFEST_PATH: Path = ARTIFACTS / "fixed_group_split_manifest.json"
 # Model lokal
 INDOBERT_MODEL_PATH: Path = ROOT / "model" / "indobert-base-p2"
 
+# LLM lokal (skenario-2). GGUF dijalankan via llama-cpp-python (Windows-native,
+# aman untuk VRAM 8GB dengan kuantisasi Q4_K_M). Diunduh manual, sejajar AWQ.
+QWEN_GGUF_DIR: Path = ROOT / "model" / "Qwen3-8B-GGUF"
+QWEN_GGUF_MODEL_PATH: Path = QWEN_GGUF_DIR / "Qwen3-8B-Q4_K_M.gguf"
+LLM_RESULTS_PATH: Path = RESULTS / "scenario_with_llm.csv"
+
 # ---------------------------------------------------------------------------
 # I/O
 # ---------------------------------------------------------------------------
@@ -98,6 +104,17 @@ LABEL2ID: dict[str, int] = {"negatif": 0, "netral": 1, "positif": 2}
 ID2LABEL: dict[int, str] = {value: key for key, value in LABEL2ID.items()}
 SENTIMENT_LABELS: tuple[str, ...] = ("negatif", "netral", "positif")
 
+# Konfigurasi runtime LLM GGUF (skenario-2). Dipakai LLMService via llama-cpp.
+LLM_CONFIG: dict[str, object] = {
+    "n_ctx": 4096,          # jendela konteks; cukup untuk 1 opini + prompt
+    "n_gpu_layers": -1,     # -1 = offload seluruh layer ke GPU (Q4_K_M ~5GB muat 8GB)
+    "n_batch": 256,
+    "temperature": 0.0,     # deterministik untuk klasifikasi
+    "max_tokens": 8,        # cukup untuk satu label
+    "seed": GLOBAL_SEED,
+    "verbose": False,
+}
+
 # ---------------------------------------------------------------------------
 # Negasi
 # ---------------------------------------------------------------------------
@@ -113,6 +130,27 @@ SEMANTIC_SIMILARITY_BETA: float = 0.35
 EMBEDDING_DIMENSION: int = 128
 CLUSTER_SIMILARITY_THRESHOLD: float = 0.72
 MIN_CLUSTER_SIZE: int = 3
+
+# ---------------------------------------------------------------------------
+# Topic extraction (HDBSCAN + c-TF-IDF)
+# ---------------------------------------------------------------------------
+# Embedding IndoBERT -> reduksi PCA -> HDBSCAN density clustering -> keyword
+# per-klaster dari term/frasa yang paling sering muncul (raw frequency n-gram).
+# Metrik euclidean pada vektor ter-L2-norm ekuivalen dengan cosine.
+# Klaster -1 = noise (bukan topik dominan).
+TOPIC_CONFIG: dict[str, object] = {
+    "embedding_backend": "indobert",   # 'indobert' | 'hashing' (fallback ringan)
+    "embedding_pooling": "mean",       # 'mean' (semantik topik) | 'cls'
+    "pca_components": 50,              # reduksi dim sebelum HDBSCAN (0/None = lewati)
+    "hdbscan_min_cluster_size": 10,   # ukuran minimum sebuah topik
+    "hdbscan_min_samples": 5,
+    "hdbscan_metric": "euclidean",
+    "top_keywords": 10,               # jumlah keyword per topik
+    "keyword_ngram_max": 2,           # 1..n-gram untuk c-TF-IDF
+    "representative_docs": 3,         # contoh opini paling representatif per topik
+}
+TOPIC_ASSIGNMENTS_PATH: Path = RESULTS / "topic_assignments.parquet"
+TOPIC_SUMMARY_PATH: Path = ARTIFACTS / "topic_summary.json"
 
 # ---------------------------------------------------------------------------
 # IndoBERT hybrid experiment
@@ -167,8 +205,11 @@ FUSION_POLICY_GRID: dict[str, tuple[float, ...]] = {
 # Rule-based lexicon contract
 # ---------------------------------------------------------------------------
 RULE_CONTRACT_VERSION: str = "2.0.0"
-RULE_RESOURCE_VERSION: str = "1.0.0"
-RULE_WEAK_THRESHOLD: float = 0.35
+RULE_RESOURCE_VERSION: str = "1.1.0"
+# Kalibrasi golden (datasets/golden): ambang status `detected`. Rule hanya
+# `detected` bila confidence >= ambang ini, sehingga precision-on-fired = 100%
+# pada golden (coverage ~21.7%). Di bawah ambang -> `weak` (abstain di fusion).
+RULE_WEAK_THRESHOLD: float = 0.85
 RULE_TOKEN_PATTERN: str = r"[A-Za-zÀ-ſ]+(?:['\-][A-Za-zÀ-ſ]+)*"
 RULE_STATUS_DETECTED: str = "detected"
 RULE_STATUS_WEAK: str = "weak"
