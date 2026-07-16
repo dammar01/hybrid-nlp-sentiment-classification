@@ -53,12 +53,11 @@ class FusionService:
         """Fusi simetris IndoBERT <-> rule tanpa pembebanan salah satu metode.
 
         Prinsip: metode yang *yakin* yang menentukan. `rule_valid` (status
-        `detected`) sudah dikalibrasi ke precision-on-fired 100% pada golden,
-        jadi rule detected setara-yakin dengan IndoBERT high-confidence.
+        `detected`) telah melewati target minimum precision-on-fired pada golden.
         - rule abstain (weak/unknown)  -> hanya IndoBERT punya sinyal
         - sepakat                       -> label yang disepakati
         - konflik & IndoBERT high-conf  -> dua-duanya yakin -> tandai review/LLM
-        - konflik & IndoBERT belum yakin-> rule detected (100% precise) unggul
+        - konflik & IndoBERT belum yakin-> rule detected terkalibrasi unggul
         """
         bert_label = str(row.get("bert_label") or "netral")
         rule_label = str(row.get(config.COL_RULE_LABEL) or "netral")
@@ -92,7 +91,7 @@ class FusionService:
                 final_label = rule_label
                 action = "rule_confident"
                 reason = (
-                    "Rule detected (kalibrasi precision 100%) unggul; "
+                    "Rule detected memenuhi target precision golden; "
                     "IndoBERT belum cukup yakin."
                 )
 
