@@ -132,7 +132,7 @@ CLUSTER_SIMILARITY_THRESHOLD: float = 0.72
 MIN_CLUSTER_SIZE: int = 3
 
 # ---------------------------------------------------------------------------
-# Topic extraction (HDBSCAN + c-TF-IDF)
+# Topic extraction (HDBSCAN + raw-frequency n-gram)
 # ---------------------------------------------------------------------------
 # Embedding IndoBERT -> reduksi PCA -> HDBSCAN density clustering -> keyword
 # per-klaster dari term/frasa yang paling sering muncul (raw frequency n-gram).
@@ -146,7 +146,7 @@ TOPIC_CONFIG: dict[str, object] = {
     "hdbscan_min_samples": 5,
     "hdbscan_metric": "euclidean",
     "top_keywords": 10,               # jumlah keyword per topik
-    "keyword_ngram_max": 2,           # 1..n-gram untuk c-TF-IDF
+    "keyword_ngram_max": 2,           # rentang 1..n-gram untuk frekuensi term
     "representative_docs": 3,         # contoh opini paling representatif per topik
 }
 TOPIC_ASSIGNMENTS_PATH: Path = RESULTS / "topic_assignments.parquet"
