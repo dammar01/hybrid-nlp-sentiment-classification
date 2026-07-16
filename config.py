@@ -32,6 +32,7 @@ SOCAL_MODIFIERS_PATH: Path = RESOURCES / "socal_modifiers.json"
 RESEARCH_CONFIG_PATH: Path = RESOURCES / "research_config.json"
 SOURCE_URL_BLACKLIST_PATH: Path = RESOURCES / "source_url_blacklist.json"
 SOURCE_BLACKLIST_RULES_PATH: Path = RESOURCES / "source_blacklist_rules.json"
+TOPIC_KEYWORD_BLACKLIST_PATH: Path = RESOURCES / "topic_keyword_blacklist.json"
 
 # Output artefak
 DATASET_SUMMARY_PATH: Path = ARTIFACTS / "dataset_summary.json"

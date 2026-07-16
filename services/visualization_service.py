@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from collections import Counter
+import csv
+from pathlib import Path
+import re
 from typing import Any
 
 import polars as pl
@@ -245,6 +248,111 @@ class VisualizationService:
         fig.tight_layout(rect=(0, 0, 1, 0.92))
         return fig
 
+    def plot_hybrid_sentiment_distribution(self, df: pl.DataFrame):
+        """Bandingkan label IndoBERT, rule-based, final hybrid, dan aksi fusion."""
+        plt = self._load_pyplot()
+        fig, axes = plt.subplots(2, 2, figsize=(14, 9))
+        fig.suptitle("Distribusi Sentimen Hybrid NLP", fontsize=14, fontweight="bold")
+
+        self._plot_single_label_distribution(
+            axes[0][0], df, "bert_label", "Sentimen IndoBERT", "#4C78A8"
+        )
+        self._plot_single_label_distribution(
+            axes[0][1], df, config.COL_RULE_LABEL, "Sentimen Rule-Based", "#59A14F"
+        )
+        self._plot_single_label_distribution(
+            axes[1][0], df, "final_sentiment", "Sentimen Final Hybrid", "#F28E2B"
+        )
+
+        if "fusion_action" in df.columns:
+            actions = Counter(str(value or "unknown") for value in df["fusion_action"].to_list())
+            labels = list(actions)
+            values = [actions[label] for label in labels]
+            bars = axes[1][1].bar(labels, values, color="#B279A2")
+            axes[1][1].set_title("Aksi Fusion")
+            axes[1][1].set_ylabel("Jumlah Data")
+            axes[1][1].tick_params(axis="x", rotation=25)
+            self._annotate_bars(axes[1][1], bars, values)
+        else:
+            self._empty_axis(axes[1][1], "Kolom fusion_action tidak tersedia")
+
+        fig.tight_layout(rect=(0, 0, 1, 0.95))
+        return fig
+
+    def plot_kalbar_location_distribution(self, df: pl.DataFrame):
+        """Plot distribusi final sentiment untuk seluruh kabupaten/kota Kalbar."""
+        plt = self._load_pyplot()
+        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+        fig.suptitle(
+            "Persebaran Sentimen Hybrid di Kalimantan Barat",
+            fontsize=14,
+            fontweight="bold",
+        )
+
+        if "location" not in df.columns or "final_sentiment" not in df.columns:
+            self._empty_axis(ax, "Kolom location atau final_sentiment tidak tersedia")
+            return fig
+
+        kalbar_locations = self._kalbar_regency_names()
+        lookup = {self._canonical_location(name).casefold(): name for name in kalbar_locations}
+        general_label = "Kalimantan Barat (umum)"
+        empty_label = "Lokasi tidak spesifik"
+        other_label = "Lokasi lainnya"
+        counts = {
+            label: {sentiment: 0 for sentiment in self.labels}
+            for label in (*kalbar_locations, general_label, empty_label, other_label)
+        }
+
+        for row in df.select("location", "final_sentiment").iter_rows(named=True):
+            raw_location = str(row.get("location") or "").strip()
+            sentiment = str(row.get("final_sentiment") or "")
+            canonical = self._canonical_location(raw_location)
+            if not raw_location:
+                label = empty_label
+            elif canonical.casefold() in {"kalimantan barat", "kalbar"}:
+                label = general_label
+            else:
+                label = lookup.get(canonical.casefold(), other_label)
+            if sentiment in self.labels:
+                counts[label][sentiment] += 1
+
+        labels = list(kalbar_locations)
+        for extra in (general_label, empty_label, other_label):
+            if sum(counts[extra].values()) > 0:
+                labels.append(extra)
+
+        y_positions = list(range(len(labels)))
+        left = [0] * len(labels)
+        colors = {"negatif": "#E15759", "netral": "#BFBFBF", "positif": "#59A14F"}
+        for sentiment in self.labels:
+            values = [counts[label][sentiment] for label in labels]
+            ax.barh(
+                y_positions,
+                values,
+                left=left,
+                label=sentiment,
+                color=colors.get(sentiment, "#4C78A8"),
+            )
+            left = [current + value for current, value in zip(left, values)]
+
+        ax.set_yticks(y_positions, labels)
+        ax.invert_yaxis()
+        ax.set_xlabel("Jumlah Data")
+        ax.set_ylabel("Kabupaten/Kota")
+        ax.legend(title="Sentimen")
+        for index, total in enumerate(left):
+            ax.text(total, index, f" {total}", va="center", fontsize=8)
+        fig.tight_layout(rect=(0, 0, 1, 0.95))
+        return fig
+
+    def save_figure(self, figure, path: str | Path, *, dpi: int = 160) -> Path:
+        """Simpan figure dan tutup resource matplotlib."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        figure.savefig(path, dpi=dpi, bbox_inches="tight")
+        self._load_pyplot().close(figure)
+        return path
+
     def plot_evaluation_dashboard(
         self,
         df: pl.DataFrame,
@@ -415,6 +523,39 @@ class VisualizationService:
         if column not in df.columns:
             return []
         return [len(str(value or "")) for value in df[column].to_list()]
+
+    @staticmethod
+    def _canonical_location(name: str) -> str:
+        value = re.sub(r"\s+", " ", str(name or "").strip())
+        value = re.sub(r"^(kabupaten|kab\.?|kota)\s+", "", value, flags=re.IGNORECASE)
+        return value.title()
+
+    @classmethod
+    def _kalbar_regency_names(cls) -> list[str]:
+        province_code = ""
+        with (config.RESOURCES / "wilayah" / "provinsi.csv").open(
+            encoding=config.ENCODING,
+            newline="",
+        ) as handle:
+            for row in csv.DictReader(handle):
+                if str(row.get("name") or "").casefold() == "kalimantan barat":
+                    province_code = str(row.get("code") or "").strip()
+                    break
+
+        names: list[str] = []
+        seen: set[str] = set()
+        with (config.RESOURCES / "wilayah" / "kabupaten.csv").open(
+            encoding=config.ENCODING,
+            newline="",
+        ) as handle:
+            for row in csv.DictReader(handle):
+                if str(row.get("parent_code") or "").strip() != province_code:
+                    continue
+                name = cls._canonical_location(row.get("name") or "")
+                if name and name.casefold() not in seen:
+                    names.append(name)
+                    seen.add(name.casefold())
+        return names
 
     @staticmethod
     def _rule_hit_counts(df: pl.DataFrame) -> Counter:

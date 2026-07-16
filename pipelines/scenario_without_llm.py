@@ -48,18 +48,24 @@ def run(
     validate_input(df)
     prepared = prepare_runtime_input(df)
 
+    # Rule-based dijalankan lebih dahulu sebagai sinyal leksikal.
+    ruled = LexiconSentimentService().analyze_dataframe(
+        prepared,
+        text_column=config.COL_PROCESSED,
+    )
+
+    # IndoBERT menambahkan sinyal kontekstual pada baris yang sama.
     inference = IndoBERTInferenceService(
         model_path=model_dir,
         calibration_artifact_path=calibration_artifact_path,
     )
-    predicted = inference.predict_dataframe(prepared, text_column=config.COL_PROCESSED)
-    ruled = LexiconSentimentService().analyze_dataframe(
-        predicted,
+    predicted = inference.predict_dataframe(
+        ruled,
         text_column=config.COL_PROCESSED,
     )
     policy = artifact.load_json(fusion_policy_path)
     scored = AmbiguityService(weights=dict(policy["uncertainty_weights"])).score_dataframe(
-        ruled
+        predicted
     )
     fused = FusionService(policy=policy).fuse_dataframe(scored)
     result = order_output_columns(fused)

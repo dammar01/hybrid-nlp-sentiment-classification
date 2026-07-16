@@ -9,6 +9,7 @@ dominan, dan opini representatif per topik.
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from typing import Any, Sequence
 
@@ -16,17 +17,92 @@ import polars as pl
 
 import config
 
-# Stopword bahasa Indonesia ringkas untuk menyaring keyword non-informatif.
-_ID_STOPWORDS: frozenset[str] = frozenset(
-    """
-    yang di ke dari dan atau untuk pada dengan dalam ini itu adalah akan telah
-    sudah tidak juga saja karena agar oleh sebagai para kami kita mereka saya
-    anda dia nya ada tak bukan belum jika maka namun tetapi serta hingga sampai
-    saat ketika setelah sebelum antara secara lebih paling sangat bisa dapat
-    harus akan masih hanya pun lah kah yaitu yakni ialah tersebut sini situ
-    mana apa siapa bagaimana kapan dimana kenapa mengapa nya per se
-    """.split()
+_TOPIC_KEYWORD_RESOURCE_KEYS: tuple[str, ...] = (
+    "hard_blacklist_tokens",
+    "generic_tokens",
+    "stopwords",
+    "exact_blacklist",
+    "platform_noise_fragments",
+    "token_noise_fragments",
 )
+
+
+def _normalize_keyword(keyword: str) -> str:
+    return " ".join(str(keyword).casefold().split())
+
+
+def _load_topic_keyword_terms(raw: dict[str, Any], key: str) -> tuple[str, ...]:
+    values = raw.get(key)
+    if not isinstance(values, list) or not all(
+        isinstance(value, str) for value in values
+    ):
+        raise ValueError(
+            f"Resource keyword topik harus berisi list string untuk key '{key}'"
+        )
+    normalized_values = [_normalize_keyword(value) for value in values]
+    return tuple(dict.fromkeys(value for value in normalized_values if value))
+
+
+def _load_topic_keyword_resource() -> dict[str, tuple[str, ...]]:
+    path = config.TOPIC_KEYWORD_BLACKLIST_PATH
+    raw = json.loads(path.read_text(encoding=config.ENCODING))
+    if not isinstance(raw, dict):
+        raise ValueError(f"Resource keyword topik harus berupa object JSON: {path}")
+    missing = [key for key in _TOPIC_KEYWORD_RESOURCE_KEYS if key not in raw]
+    if missing:
+        raise KeyError(f"Key resource keyword topik hilang: {missing}")
+    return {
+        key: _load_topic_keyword_terms(raw, key)
+        for key in _TOPIC_KEYWORD_RESOURCE_KEYS
+    }
+
+
+_TOPIC_KEYWORD_RESOURCE = _load_topic_keyword_resource()
+_TOPIC_HARD_BLACKLIST_TOKENS: frozenset[str] = frozenset(
+    _TOPIC_KEYWORD_RESOURCE["hard_blacklist_tokens"]
+)
+_TOPIC_GENERIC_TOKENS: frozenset[str] = frozenset(
+    _TOPIC_KEYWORD_RESOURCE["generic_tokens"]
+)
+_TOPIC_STOPWORDS: frozenset[str] = (
+    frozenset(_TOPIC_KEYWORD_RESOURCE["stopwords"])
+    | _TOPIC_HARD_BLACKLIST_TOKENS
+    | _TOPIC_GENERIC_TOKENS
+)
+_TOPIC_EXACT_BLACKLIST: frozenset[str] = frozenset(
+    _TOPIC_KEYWORD_RESOURCE["exact_blacklist"]
+)
+_PLATFORM_NOISE_FRAGMENTS: tuple[str, ...] = _TOPIC_KEYWORD_RESOURCE[
+    "platform_noise_fragments"
+]
+_TOKEN_NOISE_FRAGMENTS: tuple[str, ...] = _TOPIC_KEYWORD_RESOURCE[
+    "token_noise_fragments"
+]
+
+
+def _is_noise_token(token: str) -> bool:
+    return (
+        token in _TOPIC_HARD_BLACKLIST_TOKENS
+        or not token.isascii()
+        or len(token) > 24
+        or "'" in token
+        or token.endswith("see")
+        or token.endswith("up")
+        or any(fragment in token for fragment in _TOKEN_NOISE_FRAGMENTS)
+    )
+
+
+def _is_informative_keyword(keyword: str) -> bool:
+    normalized = _normalize_keyword(keyword)
+    tokens = normalized.split()
+    content_tokens = [token for token in tokens if token not in _TOPIC_STOPWORDS]
+    return (
+        bool(tokens)
+        and normalized not in _TOPIC_EXACT_BLACKLIST
+        and not any(fragment in normalized for fragment in _PLATFORM_NOISE_FRAGMENTS)
+        and not any(_is_noise_token(token) for token in tokens)
+        and bool(content_tokens)
+    )
 
 
 class TopicService:
@@ -62,8 +138,8 @@ class TopicService:
         # CountVectorizer -> frekuensi mentah tiap n-gram per klaster.
         vectorizer = CountVectorizer(
             ngram_range=(1, max(1, self.ngram_max)),
-            stop_words=list(_ID_STOPWORDS),
-            token_pattern=r"[A-Za-zÀ-ſ]{3,}(?:['\-][A-Za-zÀ-ſ]+)*",
+            stop_words=sorted(_TOPIC_STOPWORDS),
+            token_pattern=r"(?u)\b[^\W\d_]{3,}\b",
             min_df=1,
         )
         matrix = vectorizer.fit_transform(class_documents)
@@ -75,11 +151,19 @@ class TopicService:
             if counts.size == 0:
                 keywords[cluster_id] = []
                 continue
-            # urutkan berdasarkan frekuensi tertinggi
-            top_index = counts.argsort()[::-1][: self.top_keywords]
-            keywords[cluster_id] = [
-                str(terms[i]) for i in top_index if counts[i] > 0
-            ]
+            # Ambil top-N setelah noise dibuang agar keyword informatif tidak
+            # kehilangan slot karena boilerplate berfrekuensi tinggi.
+            selected: list[str] = []
+            for term_index in counts.argsort()[::-1]:
+                if counts[term_index] <= 0:
+                    break
+                keyword = str(terms[term_index])
+                if not _is_informative_keyword(keyword):
+                    continue
+                selected.append(keyword)
+                if len(selected) >= self.top_keywords:
+                    break
+            keywords[cluster_id] = selected
         return keywords
 
     def summarize(

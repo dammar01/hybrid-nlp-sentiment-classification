@@ -27,8 +27,6 @@ class FusionService:
     def default_policy() -> dict[str, Any]:
         return {
             "high_confidence_threshold": 0.80,
-            "low_confidence_threshold": 0.55,
-            "rule_confidence_threshold": config.RULE_WEAK_THRESHOLD,
             "uncertainty_review_threshold": 0.70,
             "uncertainty_weights": {"wc": 0.40, "wm": 0.40, "wd": 0.20},
         }
@@ -123,18 +121,12 @@ class FusionService:
             scored = AmbiguityService(weights=dict(weights)).score_dataframe(
                 self._drop_existing_uncertainty(calibration_df)
             )
-            for high, low, rule, review in product(
+            for high, review in product(
                 config.FUSION_POLICY_GRID["high_confidence_threshold"],
-                config.FUSION_POLICY_GRID["low_confidence_threshold"],
-                config.FUSION_POLICY_GRID["rule_confidence_threshold"],
                 config.FUSION_POLICY_GRID["uncertainty_review_threshold"],
             ):
-                if low >= high:
-                    continue
                 policy = {
                     "high_confidence_threshold": high,
-                    "low_confidence_threshold": low,
-                    "rule_confidence_threshold": rule,
                     "uncertainty_review_threshold": review,
                     "uncertainty_weights": dict(weights),
                 }
@@ -143,15 +135,31 @@ class FusionService:
                     fused[actual_column].to_list(),
                     fused["final_sentiment"].to_list(),
                 )
-                override_count = int(
-                    fused.filter(pl.col("fusion_action") == "rule_override").height
+                changed_from_indobert_count = int(
+                    fused.filter(
+                        pl.col("final_sentiment") != pl.col("bert_label")
+                    ).height
+                )
+                error_rows = fused.filter(
+                    pl.col("final_sentiment") != pl.col(actual_column)
+                )
+                reviewed_error_count = int(
+                    error_rows.filter(pl.col("needs_review") == True).height
+                )
+                error_count = int(error_rows.height)
+                review_count = int(
+                    fused.filter(pl.col("needs_review") == True).height
                 )
                 candidates.append(
                     {
                         "policy": policy,
                         "balanced_accuracy": float(metrics["balanced_accuracy"]),
                         "macro_f1": float(metrics["macro_f1"]),
-                        "override_count": override_count,
+                        "changed_from_indobert_count": changed_from_indobert_count,
+                        "error_capture_rate": (
+                            reviewed_error_count / error_count if error_count else 1.0
+                        ),
+                        "review_rate": review_count / fused.height if fused.height else 0.0,
                         "metrics": metrics,
                     }
                 )
@@ -163,10 +171,10 @@ class FusionService:
             key=lambda item: (
                 -item["balanced_accuracy"],
                 -item["macro_f1"],
-                item["override_count"],
+                -item["error_capture_rate"],
+                item["review_rate"],
+                item["changed_from_indobert_count"],
                 -item["policy"]["high_confidence_threshold"],
-                item["policy"]["low_confidence_threshold"],
-                item["policy"]["rule_confidence_threshold"],
                 item["policy"]["uncertainty_review_threshold"],
             )
         )
@@ -176,7 +184,11 @@ class FusionService:
             "selection_metric": {
                 "balanced_accuracy": selected["balanced_accuracy"],
                 "macro_f1": selected["macro_f1"],
-                "override_count": selected["override_count"],
+                "changed_from_indobert_count": selected[
+                    "changed_from_indobert_count"
+                ],
+                "error_capture_rate": round(selected["error_capture_rate"], 6),
+                "review_rate": round(selected["review_rate"], 6),
             },
             "candidate_count": len(candidates),
         }
