@@ -206,46 +206,34 @@ class VisualizationService:
         return fig
 
     def plot_topic_overview(self, topic_summary: dict[str, Any], top_n: int = 10):
-        """Visualisasi topik HDBSCAN: ukuran klaster, sentimen, dan keyword."""
+        """Visualisasi frekuensi keyword SO-CAL per kelas sentimen."""
         plt = self._load_pyplot()
-        topics = list(topic_summary.get("topics", []))[:top_n]
-        fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-        fig.suptitle("Topik Dominan (HDBSCAN + Frekuensi Term)", fontsize=13, fontweight="bold")
+        sentiment_keywords = topic_summary.get("sentiment_keywords") or {}
+        labels = list(config.TOPIC_SENTIMENT_ORDER)
+        fig, axes = plt.subplots(3, 1, figsize=(14, 15), squeeze=False)
+        fig.suptitle(
+            "Keyword SO-CAL per Sentimen",
+            fontsize=13,
+            fontweight="bold",
+        )
+        palette = {"negatif": "#E15759", "netral": "#BFBFBF", "positif": "#59A14F"}
 
-        if topics:
-            names = [f"T{item['cluster_id']}" for item in topics]
-            sizes = [int(item["size"]) for item in topics]
-            bars = axes[0].bar(names, sizes, color="#4C78A8")
-            axes[0].set_title("Ukuran Topik")
-            axes[0].set_xlabel("Cluster ID")
-            axes[0].set_ylabel("Jumlah Opini")
-            self._annotate_bars(axes[0], bars, sizes)
+        for row_index, label in enumerate(labels):
+            axis = axes[row_index][0]
+            details = list(
+                sentiment_keywords.get(label, {}).get("keyword_details", [])
+            )[:top_n][::-1]
+            if not details:
+                self._empty_axis(axis, f"Keyword SO-CAL {label} tidak tersedia")
+                continue
 
-            palette = {"negatif": "#E15759", "netral": "#BFBFBF", "positif": "#59A14F"}
-            bottoms = [0.0] * len(topics)
-            for label in self.labels:
-                values = [int(item["sentiment_distribution"].get(label, 0)) for item in topics]
-                axes[1].bar(names, values, bottom=bottoms, label=label,
-                            color=palette.get(label, "#888888"))
-                bottoms = [b + v for b, v in zip(bottoms, values)]
-            axes[1].set_title("Distribusi Sentimen per Topik")
-            axes[1].set_xlabel("Cluster ID")
-            axes[1].set_ylabel("Jumlah Opini")
-            axes[1].legend(fontsize=8)
+            keywords = [str(item["keyword"]) for item in details]
+            frequencies = [int(item.get("frequency", 0)) for item in details]
+            axis.barh(keywords, frequencies, color=palette.get(label, "#4C78A8"))
+            axis.set_title(f"Keyword {label.title()}")
+            axis.set_xlabel("Jumlah Kemunculan")
 
-            top = topics[0]
-            kw = list(top.get("keywords", []))[:10][::-1]
-            if kw:
-                axes[2].barh(kw, range(1, len(kw) + 1), color="#F28E2B")
-                axes[2].set_title(f"Keyword Topik Terbesar (T{top['cluster_id']})")
-                axes[2].set_xlabel("Peringkat Frekuensi")
-            else:
-                self._empty_axis(axes[2], "Keyword tidak tersedia")
-        else:
-            for ax in axes:
-                self._empty_axis(ax, "Tidak ada topik (semua noise)")
-
-        fig.tight_layout(rect=(0, 0, 1, 0.92))
+        fig.tight_layout(rect=(0, 0, 1, 0.95))
         return fig
 
     def plot_hybrid_sentiment_distribution(self, df: pl.DataFrame):

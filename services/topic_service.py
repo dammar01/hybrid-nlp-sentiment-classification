@@ -1,16 +1,11 @@
-"""Ekstraksi topik dari hasil klaster HDBSCAN.
-
-Keyword topik diperoleh dari **term/frasa yang paling sering muncul** pada tiap
-klaster (raw frequency n-gram). Seluruh opini dalam satu klaster digabung, lalu
-dihitung frekuensi tiap term (dengan penyaringan stopword), dan top-N term
-tersering menjadi keyword topik. Menyediakan pula ringkasan sentimen, lokasi
-dominan, dan opini representatif per topik.
-"""
+"""Ekstraksi keyword langsung dari resource SO-CAL per kelas sentimen."""
 
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
+from pathlib import Path
 from typing import Any, Sequence
 
 import polars as pl
@@ -31,7 +26,16 @@ def _normalize_keyword(keyword: str) -> str:
     return " ".join(str(keyword).casefold().split())
 
 
-def _load_topic_keyword_terms(raw: dict[str, Any], key: str) -> tuple[str, ...]:
+def _load_json_object(path: Path, resource_name: str) -> dict[str, Any]:
+    raw = json.loads(path.read_text(encoding=config.ENCODING))
+    if not isinstance(raw, dict):
+        raise ValueError(f"{resource_name} harus berupa object JSON: {path}")
+    return raw
+
+
+def _load_topic_keyword_terms(
+    raw: dict[str, Any], key: str
+) -> tuple[str, ...]:
     values = raw.get(key)
     if not isinstance(values, list) or not all(
         isinstance(value, str) for value in values
@@ -39,15 +43,14 @@ def _load_topic_keyword_terms(raw: dict[str, Any], key: str) -> tuple[str, ...]:
         raise ValueError(
             f"Resource keyword topik harus berisi list string untuk key '{key}'"
         )
-    normalized_values = [_normalize_keyword(value) for value in values]
-    return tuple(dict.fromkeys(value for value in normalized_values if value))
+    normalized = [_normalize_keyword(value) for value in values]
+    return tuple(dict.fromkeys(value for value in normalized if value))
 
 
-def _load_topic_keyword_resource() -> dict[str, tuple[str, ...]]:
-    path = config.TOPIC_KEYWORD_BLACKLIST_PATH
-    raw = json.loads(path.read_text(encoding=config.ENCODING))
-    if not isinstance(raw, dict):
-        raise ValueError(f"Resource keyword topik harus berupa object JSON: {path}")
+def _load_topic_keyword_resource(
+    path: Path,
+) -> dict[str, tuple[str, ...]]:
+    raw = _load_json_object(path, "Resource keyword topik")
     missing = [key for key in _TOPIC_KEYWORD_RESOURCE_KEYS if key not in raw]
     if missing:
         raise KeyError(f"Key resource keyword topik hilang: {missing}")
@@ -57,181 +60,285 @@ def _load_topic_keyword_resource() -> dict[str, tuple[str, ...]]:
     }
 
 
-_TOPIC_KEYWORD_RESOURCE = _load_topic_keyword_resource()
-_TOPIC_HARD_BLACKLIST_TOKENS: frozenset[str] = frozenset(
-    _TOPIC_KEYWORD_RESOURCE["hard_blacklist_tokens"]
-)
-_TOPIC_GENERIC_TOKENS: frozenset[str] = frozenset(
-    _TOPIC_KEYWORD_RESOURCE["generic_tokens"]
-)
-_TOPIC_STOPWORDS: frozenset[str] = (
-    frozenset(_TOPIC_KEYWORD_RESOURCE["stopwords"])
-    | _TOPIC_HARD_BLACKLIST_TOKENS
-    | _TOPIC_GENERIC_TOKENS
-)
-_TOPIC_EXACT_BLACKLIST: frozenset[str] = frozenset(
-    _TOPIC_KEYWORD_RESOURCE["exact_blacklist"]
-)
-_PLATFORM_NOISE_FRAGMENTS: tuple[str, ...] = _TOPIC_KEYWORD_RESOURCE[
-    "platform_noise_fragments"
-]
-_TOKEN_NOISE_FRAGMENTS: tuple[str, ...] = _TOPIC_KEYWORD_RESOURCE[
-    "token_noise_fragments"
-]
+def _load_socal_entries(
+    path: Path,
+    *,
+    group: str,
+    text_key: str,
+    source: str,
+) -> tuple[str, tuple[dict[str, Any], ...]]:
+    raw = _load_json_object(path, "Resource SO-CAL")
+    version = str(raw.get("version") or "").strip()
+    items = raw.get(group)
+    if not version:
+        raise ValueError(f"Field 'version' wajib tersedia di {path}")
+    if not isinstance(items, list):
+        raise ValueError(f"Group '{group}' wajib berupa list di {path}")
 
+    entries: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError(f"Item '{group}' wajib berupa object di {path}")
+        missing = [
+            key
+            for key in (text_key, "label", "weight", "category")
+            if key not in item
+        ]
+        if missing:
+            raise KeyError(f"Field SO-CAL hilang di {path}: {missing}")
+        keyword = _normalize_keyword(item[text_key])
+        label = _normalize_keyword(item["label"])
+        if not keyword:
+            continue
+        if label not in config.SENTIMENT_LABELS:
+            raise ValueError(f"Label SO-CAL tidak valid di {path}: {label}")
+        identity = (keyword, label)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        entries.append(
+            {
+                "keyword": keyword,
+                "sentiment_label": label,
+                "weight": float(item["weight"]),
+                "category": str(item["category"]),
+                "source": source,
+            }
+        )
 
-def _is_noise_token(token: str) -> bool:
-    return (
-        token in _TOPIC_HARD_BLACKLIST_TOKENS
-        or not token.isascii()
-        or len(token) > 24
-        or "'" in token
-        or token.endswith("see")
-        or token.endswith("up")
-        or any(fragment in token for fragment in _TOKEN_NOISE_FRAGMENTS)
+    entries.sort(
+        key=lambda item: (
+            -len(str(item["keyword"]).split()),
+            -len(str(item["keyword"])),
+            str(item["keyword"]),
+        )
     )
+    return version, tuple(entries)
 
 
-def _is_informative_keyword(keyword: str) -> bool:
-    normalized = _normalize_keyword(keyword)
-    tokens = normalized.split()
-    content_tokens = [token for token in tokens if token not in _TOPIC_STOPWORDS]
-    return (
-        bool(tokens)
-        and normalized not in _TOPIC_EXACT_BLACKLIST
-        and not any(fragment in normalized for fragment in _PLATFORM_NOISE_FRAGMENTS)
-        and not any(_is_noise_token(token) for token in tokens)
-        and bool(content_tokens)
-    )
+def _count_occurrences(text: str, keyword: str) -> int:
+    pattern = rf"(?<!\w){re.escape(keyword)}(?!\w)"
+    return len(re.findall(pattern, text, flags=re.UNICODE))
 
 
 class TopicService:
-    """Turunkan keyword dan ringkasan topik dari klaster."""
+    """Cocokkan keyword SO-CAL langsung pada dokumen per sentimen."""
 
     def __init__(
         self,
         top_keywords: int = int(config.TOPIC_CONFIG["top_keywords"]),
-        ngram_max: int = int(config.TOPIC_CONFIG["keyword_ngram_max"]),
         representative_docs: int = int(config.TOPIC_CONFIG["representative_docs"]),
+        *,
+        word_rules_path: str | Path = config.SOCAL_WORD_RULES_PATH,
+        phrase_rules_path: str | Path = config.SOCAL_PHRASE_RULES_PATH,
+        blacklist_path: str | Path = config.TOPIC_KEYWORD_BLACKLIST_PATH,
     ) -> None:
-        self.top_keywords = top_keywords
-        self.ngram_max = ngram_max
-        self.representative_docs = representative_docs
+        self.top_keywords = int(top_keywords)
+        self.representative_docs = int(representative_docs)
+        self.word_rules_path = Path(word_rules_path)
+        self.phrase_rules_path = Path(phrase_rules_path)
+        self.blacklist_path = Path(blacklist_path)
+
+        blacklist = _load_topic_keyword_resource(self.blacklist_path)
+        self.platform_noise_fragments = blacklist["platform_noise_fragments"]
+        self.token_noise_fragments = blacklist["token_noise_fragments"]
+        self.lexical_blacklist = frozenset(
+            blacklist["hard_blacklist_tokens"]
+            + blacklist["generic_tokens"]
+            + blacklist["stopwords"]
+            + blacklist["exact_blacklist"]
+        )
+
+        word_version, words = _load_socal_entries(
+            self.word_rules_path,
+            group="word_rules",
+            text_key="term",
+            source="socal_word",
+        )
+        phrase_version, phrases = _load_socal_entries(
+            self.phrase_rules_path,
+            group="phrase_rules",
+            text_key="phrase",
+            source="socal_phrase",
+        )
+        self.resource_versions = {
+            "socal_word_rules": word_version,
+            "socal_phrase_rules": phrase_version,
+        }
+        self.socal_entries = phrases + words
+        self.socal_by_sentiment = {
+            label: tuple(
+                item for item in self.socal_entries if item["sentiment_label"] == label
+            )
+            for label in config.SENTIMENT_LABELS
+        }
+        self.blacklist_overlaps = sorted(
+            {
+                str(item["keyword"])
+                for item in self.socal_entries
+                if str(item["keyword"]) in self.lexical_blacklist
+            }
+        )
+
+    def _contains_noise(self, keyword: str) -> bool:
+        normalized = _normalize_keyword(keyword)
+        tokens = normalized.split()
+        return (
+            not tokens
+            or any(fragment in normalized for fragment in self.platform_noise_fragments)
+            or any(
+                not token.isascii()
+                or len(token) > 24
+                or "'" in token
+                or token.endswith("see")
+                or token.endswith("up")
+                or any(fragment in token for fragment in self.token_noise_fragments)
+                for token in tokens
+            )
+        )
+
+    def extract_keyword_details(
+        self,
+        texts: Sequence[str],
+        *,
+        sentiment_label: str,
+    ) -> list[dict[str, Any]]:
+        """Ambil keyword langsung dari SO-CAL dengan label sentimen yang sama."""
+        normalized_label = _normalize_keyword(sentiment_label)
+        if normalized_label not in config.SENTIMENT_LABELS:
+            raise ValueError(f"Label sentimen keyword tidak valid: {sentiment_label}")
+
+        normalized_texts = [_normalize_keyword(text) for text in texts]
+        candidates: list[dict[str, Any]] = []
+        for entry in self.socal_by_sentiment[normalized_label]:
+            keyword = str(entry["keyword"])
+            if self._contains_noise(keyword):
+                continue
+            occurrences = [_count_occurrences(text, keyword) for text in normalized_texts]
+            frequency = sum(occurrences)
+            if frequency <= 0:
+                continue
+            candidates.append(
+                {
+                    "keyword": keyword,
+                    "source": entry["source"],
+                    "sentiment_label": normalized_label,
+                    "category": entry["category"],
+                    "frequency": frequency,
+                    "document_frequency": sum(count > 0 for count in occurrences),
+                    "socal_weight": float(entry["weight"]),
+                    "blacklist_overridden": keyword in self.lexical_blacklist,
+                }
+            )
+
+        source_order = {"socal_phrase": 0, "socal_word": 1}
+        candidates.sort(
+            key=lambda item: (
+                source_order[str(item["source"])],
+                -int(item["document_frequency"]),
+                -int(item["frequency"]),
+                -len(str(item["keyword"]).split()),
+                str(item["keyword"]),
+            )
+        )
+
+        selected: list[dict[str, Any]] = []
+        selected_phrases: list[str] = []
+        for candidate in candidates:
+            keyword = str(candidate["keyword"])
+            if candidate["source"] == "socal_word" and any(
+                keyword in phrase.split() for phrase in selected_phrases
+            ):
+                continue
+            selected.append(candidate)
+            if candidate["source"] == "socal_phrase":
+                selected_phrases.append(keyword)
+            if len(selected) >= self.top_keywords:
+                break
+
+        return [
+            {**item, "rank": rank}
+            for rank, item in enumerate(selected, start=1)
+        ]
 
     def extract_keywords(
-        self, texts: Sequence[str], cluster_ids: Sequence[int]
-    ) -> dict[int, list[str]]:
-        """Keyword = term/frasa paling sering muncul per klaster (kecuali noise -1)."""
-        from sklearn.feature_extraction.text import CountVectorizer
-
-        grouped: dict[int, list[str]] = {}
-        for text, cluster_id in zip(texts, cluster_ids):
-            if cluster_id == -1:
-                continue
-            grouped.setdefault(int(cluster_id), []).append(str(text or ""))
-        if not grouped:
-            return {}
-
-        cluster_order = sorted(grouped)
-        class_documents = [" ".join(grouped[cid]) for cid in cluster_order]
-
-        # CountVectorizer -> frekuensi mentah tiap n-gram per klaster.
-        vectorizer = CountVectorizer(
-            ngram_range=(1, max(1, self.ngram_max)),
-            stop_words=sorted(_TOPIC_STOPWORDS),
-            token_pattern=r"(?u)\b[^\W\d_]{3,}\b",
-            min_df=1,
-        )
-        matrix = vectorizer.fit_transform(class_documents)
-        terms = vectorizer.get_feature_names_out()
-
-        keywords: dict[int, list[str]] = {}
-        for row_index, cluster_id in enumerate(cluster_order):
-            counts = matrix.getrow(row_index).toarray().ravel()
-            if counts.size == 0:
-                keywords[cluster_id] = []
-                continue
-            # Ambil top-N setelah noise dibuang agar keyword informatif tidak
-            # kehilangan slot karena boilerplate berfrekuensi tinggi.
-            selected: list[str] = []
-            for term_index in counts.argsort()[::-1]:
-                if counts[term_index] <= 0:
-                    break
-                keyword = str(terms[term_index])
-                if not _is_informative_keyword(keyword):
-                    continue
-                selected.append(keyword)
-                if len(selected) >= self.top_keywords:
-                    break
-            keywords[cluster_id] = selected
-        return keywords
+        self,
+        texts: Sequence[str],
+        *,
+        sentiment_label: str,
+    ) -> list[str]:
+        return [
+            str(item["keyword"])
+            for item in self.extract_keyword_details(
+                texts, sentiment_label=sentiment_label
+            )
+        ]
 
     def summarize(
         self,
         df: pl.DataFrame,
         *,
+        sentiment_label: str,
         text_column: str = "original_text",
-        cluster_column: str = config.COL_CLUSTER_ID,
-        sentiment_column: str = "final_sentiment",
         location_column: str = "location",
-        probability_column: str = "cluster_probability",
     ) -> dict[str, Any]:
-        """Bangun ringkasan topik: keyword, sentimen, lokasi, contoh opini."""
-        if cluster_column not in df.columns:
-            raise KeyError(f"Kolom klaster hilang: {cluster_column}")
+        """Ringkas keyword SO-CAL untuk tepat satu kelas sentimen."""
+        normalized_label = _normalize_keyword(sentiment_label)
+        if normalized_label not in config.SENTIMENT_LABELS:
+            raise ValueError(f"Label sentimen keyword tidak valid: {sentiment_label}")
         text_column = text_column if text_column in df.columns else config.COL_PROCESSED
+        if text_column not in df.columns:
+            raise KeyError(f"Kolom teks keyword tidak ditemukan: {text_column}")
 
-        texts = df[text_column].to_list()
-        cluster_ids = [int(value) for value in df[cluster_column].to_list()]
-        keywords = self.extract_keywords(texts, cluster_ids)
-
-        sentiments = (
-            df[sentiment_column].to_list()
-            if sentiment_column in df.columns
-            else [None] * df.height
+        texts = [str(value or "") for value in df[text_column].to_list()]
+        details = self.extract_keyword_details(
+            texts, sentiment_label=normalized_label
         )
         locations = (
             df[location_column].to_list()
             if location_column in df.columns
             else [None] * df.height
         )
-        probabilities = (
-            [float(value or 0.0) for value in df[probability_column].to_list()]
-            if probability_column in df.columns
-            else [0.0] * df.height
-        )
+        location_counts = Counter(value for value in locations if value)
 
-        topics: list[dict[str, Any]] = []
-        for cluster_id in sorted(set(cid for cid in cluster_ids if cid != -1)):
-            member_index = [i for i, cid in enumerate(cluster_ids) if cid == cluster_id]
-            sent_dist = dict(
-                Counter(sentiments[i] for i in member_index if sentiments[i])
-            )
-            dominant = (
-                max(sent_dist.items(), key=lambda kv: kv[1])[0] if sent_dist else "netral"
-            )
-            loc_dist = Counter(locations[i] for i in member_index if locations[i])
-            # opini representatif = probabilitas keanggotaan tertinggi
-            ranked = sorted(member_index, key=lambda i: probabilities[i], reverse=True)
-            reps = [str(texts[i]) for i in ranked[: self.representative_docs]]
-            topics.append(
-                {
-                    "cluster_id": cluster_id,
-                    "size": len(member_index),
-                    "keywords": keywords.get(cluster_id, []),
-                    "sentiment_distribution": sent_dist,
-                    "dominant_sentiment": dominant,
-                    "top_locations": loc_dist.most_common(5),
-                    "representative_docs": reps,
-                }
-            )
-        topics.sort(key=lambda item: item["size"], reverse=True)
-
-        noise_count = sum(1 for cid in cluster_ids if cid == -1)
         return {
-            "n_topics": len(topics),
+            "sentiment_label": normalized_label,
             "n_documents": df.height,
-            "n_noise": noise_count,
-            "noise_ratio": round(noise_count / df.height, 4) if df.height else 0.0,
-            "topics": topics,
+            "keyword_count": len(details),
+            "keywords": [str(item["keyword"]) for item in details],
+            "keyword_details": details,
+            "top_locations": location_counts.most_common(5),
+            "representative_docs": texts[: self.representative_docs],
+        }
+
+    def empty_summary(self, sentiment_label: str) -> dict[str, Any]:
+        normalized_label = _normalize_keyword(sentiment_label)
+        return {
+            "sentiment_label": normalized_label,
+            "n_documents": 0,
+            "keyword_count": 0,
+            "keywords": [],
+            "keyword_details": [],
+            "top_locations": [],
+            "representative_docs": [],
+        }
+
+    def extraction_metadata(self) -> dict[str, Any]:
+        return {
+            "method": "direct_socal_keyword_matching_by_sentiment",
+            "sentiment_order": list(config.TOPIC_SENTIMENT_ORDER),
+            "sources": ["socal_phrase", "socal_word"],
+            "uses_embedding": False,
+            "uses_umap": False,
+            "uses_hdbscan": False,
+            "uses_ngram_fallback": False,
+            "blacklist_overlap_policy": "socal_wins",
+            "blacklist_overlaps": self.blacklist_overlaps,
+            "resource_versions": self.resource_versions,
+            "resource_paths": {
+                "socal_word_rules": str(self.word_rules_path),
+                "socal_phrase_rules": str(self.phrase_rules_path),
+                "topic_keyword_blacklist": str(self.blacklist_path),
+            },
         }

@@ -135,23 +135,17 @@ CLUSTER_SIMILARITY_THRESHOLD: float = 0.72
 MIN_CLUSTER_SIZE: int = 3
 
 # ---------------------------------------------------------------------------
-# Topic extraction (HDBSCAN + raw-frequency n-gram)
+# Topic keyword extraction (direct SO-CAL matching per sentiment)
 # ---------------------------------------------------------------------------
-# Embedding IndoBERT -> reduksi PCA -> HDBSCAN density clustering -> keyword
-# per-klaster dari term/frasa yang paling sering muncul (raw frequency n-gram).
-# Metrik euclidean pada vektor ter-L2-norm ekuivalen dengan cosine.
-# Klaster -1 = noise (bukan topik dominan).
+# Sentimen final -> kelompok positif/netral/negatif -> cocokkan phrase/word
+# SO-CAL dengan label yang sama. Tidak memakai embedding, UMAP, atau HDBSCAN.
 TOPIC_CONFIG: dict[str, object] = {
-    "embedding_backend": "indobert",  # 'indobert' | 'hashing' (fallback ringan)
-    "embedding_pooling": "mean",  # 'mean' (semantik topik) | 'cls'
-    "pca_components": 50,  # reduksi dim sebelum HDBSCAN (0/None = lewati)
-    "hdbscan_min_cluster_size": 10,  # ukuran minimum sebuah topik
-    "hdbscan_min_samples": 5,
-    "hdbscan_metric": "euclidean",
-    "top_keywords": 10,  # jumlah keyword per topik
-    "keyword_ngram_max": 2,  # rentang 1..n-gram untuk frekuensi term
-    "representative_docs": 3,  # contoh opini paling representatif per topik
+    "top_keywords": 10,  # jumlah keyword SO-CAL per kelas sentimen
+    "keyword_strategy": "direct_socal_by_sentiment",
+    "blacklist_overlap_policy": "socal_wins",
+    "representative_docs": 3,
 }
+TOPIC_SENTIMENT_ORDER: tuple[str, ...] = ("positif", "netral", "negatif")
 TOPIC_ASSIGNMENTS_PATH: Path = RESULTS / "topic_assignments.parquet"
 TOPIC_SUMMARY_PATH: Path = ARTIFACTS / "topic_summary.json"
 
