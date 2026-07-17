@@ -244,6 +244,25 @@ def parse_args() -> argparse.Namespace:
     calibrate.add_argument("--dataset", type=Path, default=config.TRAINING_DATASET_WITH_SPLIT_PATH)
     calibrate.add_argument("--experiment-dir", type=Path, required=True)
 
+    calibrate_rule = subparsers.add_parser("calibrate-rule-threshold")
+    calibrate_rule.add_argument(
+        "--dataset",
+        type=Path,
+        default=config.TRAINING_DATASET_WITH_SPLIT_PATH,
+    )
+    calibrate_rule.add_argument(
+        "--output",
+        type=Path,
+        default=config.RULE_THRESHOLD_CALIBRATION_ARTIFACT_PATH,
+    )
+    calibrate_rule.add_argument("--min-precision", type=float, default=config.RULE_MIN_PRECISION)
+    calibrate_rule.add_argument("--min-coverage", type=float, default=config.RULE_MIN_COVERAGE)
+    calibrate_rule.add_argument(
+        "--preferred-threshold",
+        type=float,
+        default=config.RULE_PREFERRED_WEAK_THRESHOLD,
+    )
+
     runtime = subparsers.add_parser("run-without-llm")
     runtime.add_argument("--input", type=Path, default=config.RAW_CANDIDATE_SCHEMA_PATH)
     runtime.add_argument("--model-dir", type=Path, required=True)
@@ -389,6 +408,23 @@ def main() -> None:
             str(args.experiment_dir),
         ]
         calibrate_main()
+    elif args.command == "calibrate-rule-threshold":
+        from scripts.calibrate_rule_threshold import main as calibrate_rule_main
+
+        sys.argv = [
+            "calibrate_rule_threshold.py",
+            "--dataset",
+            str(args.dataset),
+            "--output",
+            str(args.output),
+            "--min-precision",
+            str(args.min_precision),
+            "--min-coverage",
+            str(args.min_coverage),
+            "--preferred-threshold",
+            str(args.preferred_threshold),
+        ]
+        calibrate_rule_main()
     elif args.command == "run-without-llm":
         from pipelines.scenario_without_llm import run
 

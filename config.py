@@ -38,6 +38,9 @@ TOPIC_KEYWORD_BLACKLIST_PATH: Path = RESOURCES / "topic_keyword_blacklist.json"
 DATASET_SUMMARY_PATH: Path = ARTIFACTS / "dataset_summary.json"
 CALIBRATION_DATASET_PATH: Path = OUTPUTS / "datasets" / "tokopedia_calibration.csv"
 CALIBRATION_SUMMARY_PATH: Path = ARTIFACTS / "tokopedia_calibration_summary.json"
+RULE_THRESHOLD_CALIBRATION_ARTIFACT_PATH: Path = (
+    ARTIFACTS / "rule_threshold_calibration_artifact.json"
+)
 NON_LLM_RESULTS_PATH: Path = RESULTS / "scenario_without_llm.csv"
 NON_LLM_METRICS_PATH: Path = ARTIFACTS / "scenario_without_llm_metrics.json"
 RAW_CANDIDATE_SCHEMA_PATH: Path = DATASETS / "raw_candidate_schema.csv"
@@ -203,11 +206,26 @@ FUSION_POLICY_GRID: dict[str, tuple[float, ...]] = {
 # ---------------------------------------------------------------------------
 RULE_CONTRACT_VERSION: str = "2.0.0"
 RULE_RESOURCE_VERSION: str = "1.2.1"
-# Kalibrasi golden (datasets/golden): threshold 0.60 menghasilkan precision
-# 90/92 = 0.9783 dengan coverage 92/281 = 0.3274. Di bawah threshold aktif,
-# hasil rule berstatus `weak` dan abstain pada fusion.
-RULE_WEAK_THRESHOLD: float = 0.6
-RULE_MIN_PRECISION: float = 0.97
+# Dibekukan dari split calibration via scripts/calibrate_rule_threshold.py.
+# Threshold ini memisahkan rule `detected` dari `weak`; weak/unknown abstain
+# pada fusion agar kontribusi rule hanya berasal dari evidence berpresisi tinggi.
+RULE_WEAK_THRESHOLD: float = 0.60
+RULE_MIN_PRECISION: float = 0.95
+RULE_MIN_COVERAGE: float = 0.30
+RULE_PREFERRED_WEAK_THRESHOLD: float = 0.60
+RULE_WEAK_THRESHOLD_CANDIDATES: tuple[float, ...] = (
+    0.35,
+    0.40,
+    0.45,
+    0.50,
+    0.55,
+    0.60,
+    0.65,
+    0.70,
+    0.75,
+    0.80,
+    0.85,
+)
 RULE_TOKEN_PATTERN: str = r"[A-Za-zÀ-ſ]+(?:['\-][A-Za-zÀ-ſ]+)*"
 RULE_STATUS_DETECTED: str = "detected"
 RULE_STATUS_WEAK: str = "weak"

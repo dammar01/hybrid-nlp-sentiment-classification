@@ -95,6 +95,16 @@ class ArtifactService:
             "training_config": config.TRAINING_CONFIG,
             "split_config": config.SPLIT_CONFIG,
             "calibration_config": config.CALIBRATION_CONFIG,
+            "rule_threshold_config": {
+                "weak_threshold": config.RULE_WEAK_THRESHOLD,
+                "min_precision": config.RULE_MIN_PRECISION,
+                "min_coverage": config.RULE_MIN_COVERAGE,
+                "preferred_weak_threshold": config.RULE_PREFERRED_WEAK_THRESHOLD,
+                "candidate_thresholds": config.RULE_WEAK_THRESHOLD_CANDIDATES,
+                "calibration_artifact": str(
+                    config.RULE_THRESHOLD_CALIBRATION_ARTIFACT_PATH
+                ),
+            },
             "fusion_policy_grid": config.FUSION_POLICY_GRID,
             "uncertainty_weight_grid": list(config.UNCERTAINTY_WEIGHT_GRID),
             "preprocessing_resources": {
