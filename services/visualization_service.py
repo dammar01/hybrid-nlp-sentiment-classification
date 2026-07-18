@@ -7,6 +7,7 @@ import csv
 from pathlib import Path
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 import polars as pl
 
@@ -333,6 +334,120 @@ class VisualizationService:
         fig.tight_layout(rect=(0, 0, 1, 0.95))
         return fig
 
+    def plot_indobert_to_hybrid_transition(self, df: pl.DataFrame):
+        """Tampilkan transisi label IndoBERT ke keputusan final hybrid."""
+        plt = self._load_pyplot()
+        fig, ax = plt.subplots(1, 1, figsize=(6, 5))
+        self._plot_cross_label_heatmap(
+            ax,
+            df,
+            row_column="bert_label",
+            col_column="final_sentiment",
+            title="Transisi IndoBERT -> Hybrid (bukan evaluasi)",
+        )
+        ax.set_xlabel("Label Final Hybrid")
+        ax.set_ylabel("Label IndoBERT")
+        fig.tight_layout()
+        return fig
+
+    def plot_held_out_method_comparison(self, metrics: dict[str, Any]):
+        """Bandingkan metrik rule, IndoBERT, dan hybrid pada held-out test."""
+        plt = self._load_pyplot()
+        methods = ("rule_based", "indobert", "final_hybrid")
+        names = ("accuracy", "balanced_accuracy", "macro_f1", "weighted_f1")
+        labels = {"rule_based": "Rule-Based", "indobert": "IndoBERT", "final_hybrid": "Hybrid"}
+        colors = {"rule_based": "#59A14F", "indobert": "#4C78A8", "final_hybrid": "#F28E2B"}
+        fig, ax = plt.subplots(1, 1, figsize=(11, 5))
+        x_positions = list(range(len(names)))
+        width = 0.24
+        for offset, method in enumerate(methods):
+            values = [float((metrics.get(method) or {}).get(name, 0.0)) for name in names]
+            positions = [value + (offset - 1) * width for value in x_positions]
+            bars = ax.bar(positions, values, width=width, label=labels[method], color=colors[method])
+            for bar, value in zip(bars, values):
+                ax.text(bar.get_x() + bar.get_width() / 2, value + 0.01, f"{value:.3f}", ha="center", fontsize=8)
+        ax.set_xticks(x_positions, ["Accuracy", "Balanced Accuracy", "Macro F1", "Weighted F1"])
+        ax.set_ylim(0, 1.08)
+        ax.set_ylabel("Skor")
+        ax.set_title("Perbandingan Metode pada Held-Out Test")
+        ax.legend()
+        fig.tight_layout()
+        return fig
+
+    def plot_held_out_per_label(self, metrics: dict[str, Any]):
+        """Tampilkan metrik per label dan confusion matrix hybrid held-out."""
+        plt = self._load_pyplot()
+        fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+        per_label = metrics.get("per_label") or {}
+        x_positions = list(range(len(self.labels)))
+        width = 0.25
+        for offset, name in enumerate(("precision", "recall", "f1")):
+            values = [float((per_label.get(label) or {}).get(name, 0.0)) for label in self.labels]
+            axes[0].bar([value + (offset - 1) * width for value in x_positions], values, width=width, label=name.upper())
+        axes[0].set_xticks(x_positions, self.labels)
+        axes[0].set_ylim(0, 1.05)
+        axes[0].set_title("Performa Hybrid pada Held-Out Test")
+        axes[0].set_ylabel("Skor")
+        axes[0].legend()
+        self._plot_confusion_matrix(axes[1], metrics)
+        axes[1].set_title("Confusion Matrix Hybrid - Held-Out Test")
+        fig.tight_layout()
+        return fig
+
+    def plot_split_and_runtime_distribution(self, split_df: pl.DataFrame, runtime_df: pl.DataFrame):
+        """Bandingkan sebaran label fixed split dan sentimen runtime."""
+        plt = self._load_pyplot()
+        fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+        if {"split", "sentiment_label"}.issubset(split_df.columns):
+            grouped = Counter(split_df.select("split", "sentiment_label").iter_rows())
+            splits = ("train", "calibration", "test")
+            x_positions = list(range(len(splits)))
+            width = 0.24
+            colors = {"negatif": "#E15759", "netral": "#72B7B2", "positif": "#59A14F"}
+            for offset, label in enumerate(self.labels):
+                axes[0].bar(
+                    [value + (offset - 1) * width for value in x_positions],
+                    [grouped.get((split, label), 0) for split in splits],
+                    width=width,
+                    label=label,
+                    color=colors.get(label),
+                )
+            axes[0].set_xticks(x_positions, splits)
+            axes[0].set_title("Sebaran Label per Split")
+            axes[0].set_ylabel("Jumlah")
+            axes[0].legend()
+        else:
+            self._empty_axis(axes[0], "Fixed split tidak tersedia")
+        self._plot_single_label_distribution(axes[1], runtime_df, "final_sentiment", "Sebaran Sentimen Final Hybrid", "#F28E2B")
+        fig.tight_layout()
+        return fig
+
+    def plot_domain_and_source_type_distribution(self, df: pl.DataFrame, top_n: int = 15):
+        """Tampilkan top domain dan source type, dikelompokkan per sentimen."""
+        plt = self._load_pyplot()
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        domains = self._domain_values(df)
+        sources = self._column_values(df, "source_type")
+        sentiments = self._column_values(df, "final_sentiment")
+        self._plot_category_by_sentiment(axes[0], domains, sentiments, "Top Domain per Sentimen", top_n)
+        self._plot_category_by_sentiment(axes[1], sources, sentiments, "Sebaran Source Type per Sentimen", top_n)
+        fig.tight_layout()
+        return fig
+
+    def plot_aspect_distribution(self, df: pl.DataFrame, top_n: int = 15):
+        """Tampilkan sebaran aspect yang dikelompokkan per sentimen."""
+        plt = self._load_pyplot()
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+        self._plot_category_by_sentiment(
+            ax,
+            self._column_values(df, "aspect"),
+            self._column_values(df, "final_sentiment"),
+            "Sebaran Aspect per Sentimen",
+            top_n,
+        )
+        fig.tight_layout()
+        return fig
+
     def save_figure(self, figure, path: str | Path, *, dpi: int = 160) -> Path:
         """Simpan figure dan tutup resource matplotlib."""
         path = Path(path)
@@ -505,6 +620,42 @@ class VisualizationService:
                 color = "white" if max_value and value > max_value / 2 else "black"
                 ax.text(col_pos, row_pos, str(value), ha="center", va="center", color=color)
         ax.figure.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+
+    def _plot_category_by_sentiment(self, ax, categories: list[str], sentiments: list[str], title: str, top_n: int) -> None:
+        if not categories or not sentiments:
+            self._empty_axis(ax, "Data tidak tersedia")
+            return
+        totals = Counter(categories)
+        labels = [name for name, _count in totals.most_common(top_n)]
+        y_positions = list(range(len(labels)))
+        left = [0] * len(labels)
+        colors = {"negatif": "#E15759", "netral": "#BFBFBF", "positif": "#59A14F"}
+        pairs = Counter(zip(categories, sentiments))
+        for sentiment in self.labels:
+            values = [pairs.get((label, sentiment), 0) for label in labels]
+            ax.barh(y_positions, values, left=left, label=sentiment, color=colors.get(sentiment))
+            left = [current + value for current, value in zip(left, values)]
+        ax.set_yticks(y_positions, labels)
+        ax.invert_yaxis()
+        ax.set_title(title)
+        ax.set_xlabel("Jumlah")
+        ax.legend()
+
+    @staticmethod
+    def _column_values(df: pl.DataFrame, column: str) -> list[str]:
+        if column not in df.columns:
+            return []
+        return [str(value or "(kosong)").strip() or "(kosong)" for value in df[column].to_list()]
+
+    @classmethod
+    def _domain_values(cls, df: pl.DataFrame) -> list[str]:
+        for column in ("raw_domain", "domain"):
+            values = cls._column_values(df, column)
+            if values and any(value != "(kosong)" for value in values):
+                return values
+        if "source_url" not in df.columns:
+            return []
+        return [urlparse(str(value or "")).netloc.lower() or "(kosong)" for value in df["source_url"].to_list()]
 
     @staticmethod
     def _text_lengths(df: pl.DataFrame, column: str) -> list[int]:

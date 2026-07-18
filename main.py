@@ -93,6 +93,8 @@ def build_hybrid_report(
     predictions_path: Path,
     fusion_policy_path: Path,
     report_dir: Path,
+    topic_summary_path: Path | None = None,
+    split_dataset_path: Path | None = None,
     include_visualizations: bool = True,
 ) -> dict[str, Path]:
     """Bangun dataset laporan, metrik evaluasi, dan visualisasi hybrid."""
@@ -196,21 +198,79 @@ def build_hybrid_report(
         report_dir / "hybrid_evaluation_metrics.json",
     )
 
-    outputs = {
+    outputs: dict[str, Path] = {
         "classification_csv": classification_csv,
         "classification_parquet": classification_parquet,
         "evaluation_metrics": metrics_path,
     }
+    figures_dir = report_dir / "figures"
+    figure_sources: dict[str, str] = {}
     if include_visualizations:
         visualizer = VisualizationService()
-        outputs["sentiment_distribution"] = visualizer.save_figure(
-            visualizer.plot_hybrid_sentiment_distribution(df),
-            report_dir / "hybrid_sentiment_distribution.png",
+        topic_summary = (
+            artifact.load_json(topic_summary_path)
+            if topic_summary_path is not None and topic_summary_path.exists()
+            else {}
         )
-        outputs["kalbar_distribution"] = visualizer.save_figure(
-            visualizer.plot_kalbar_location_distribution(df),
-            report_dir / "hybrid_kalbar_location_distribution.png",
+        split_df = (
+            pl.read_parquet(split_dataset_path)
+            if split_dataset_path is not None and split_dataset_path.exists()
+            else pl.DataFrame()
         )
+        held_out = (experiment_metrics or {}).get("test_after_policy_frozen") or {}
+        final_hybrid_metrics = held_out.get("final_hybrid") or {}
+        figures = {
+            "topic_keywords": visualizer.plot_topic_overview(topic_summary, top_n=5),
+            "sentiment_distribution": visualizer.plot_hybrid_sentiment_distribution(df),
+            "indobert_to_hybrid_transition": visualizer.plot_indobert_to_hybrid_transition(df),
+            "held_out_method_comparison": visualizer.plot_held_out_method_comparison(held_out),
+            "held_out_per_label_confusion": visualizer.plot_held_out_per_label(final_hybrid_metrics),
+            "split_and_runtime_distribution": visualizer.plot_split_and_runtime_distribution(split_df, df),
+            "kalbar_distribution": visualizer.plot_kalbar_location_distribution(df),
+            "domain_and_source_type_distribution": visualizer.plot_domain_and_source_type_distribution(df),
+            "aspect_distribution": visualizer.plot_aspect_distribution(df),
+        }
+        filenames = {
+            "topic_keywords": "topic_keywords_by_sentiment.png",
+            "sentiment_distribution": "hybrid_sentiment_distribution.png",
+            "indobert_to_hybrid_transition": "indobert_to_hybrid_transition.png",
+            "held_out_method_comparison": "held_out_method_comparison.png",
+            "held_out_per_label_confusion": "held_out_per_label_confusion.png",
+            "split_and_runtime_distribution": "dataset_split_and_runtime_distribution.png",
+            "kalbar_distribution": "kalbar_location_distribution.png",
+            "domain_and_source_type_distribution": "domain_and_source_type_distribution.png",
+            "aspect_distribution": "aspect_distribution.png",
+        }
+        for name, figure in figures.items():
+            outputs[name] = visualizer.save_figure(figure, figures_dir / filenames[name])
+        figure_sources = {
+            "topic_keywords": str(topic_summary_path) if topic_summary_path else "not provided",
+            "held_out_method_comparison": str(experiment_metrics_path),
+            "held_out_per_label_confusion": str(experiment_metrics_path),
+            "split_and_runtime_distribution": f"{split_dataset_path}; {predictions_path}",
+            **{
+                name: str(predictions_path)
+                for name in (
+                    "sentiment_distribution",
+                    "indobert_to_hybrid_transition",
+                    "kalbar_distribution",
+                    "domain_and_source_type_distribution",
+                    "aspect_distribution",
+                )
+            },
+        }
+    manifest_path = report_dir / "hybrid_report_manifest.json"
+    manifest_payload = {
+        "predictions_path": str(predictions_path),
+        "fusion_policy_path": str(fusion_policy_path),
+        "experiment_metrics_path": str(experiment_metrics_path),
+        "topic_summary_path": str(topic_summary_path) if topic_summary_path else None,
+        "split_dataset_path": str(split_dataset_path) if split_dataset_path else None,
+        "visualizations_enabled": include_visualizations,
+        "outputs": {name: str(path) for name, path in outputs.items()},
+        "figure_sources": figure_sources,
+    }
+    outputs["report_manifest"] = artifact.save_json(manifest_payload, manifest_path)
     return outputs
 
 
@@ -450,17 +510,19 @@ def main() -> None:
             output_dir=args.output_dir,
             limit=args.limit,
         )
-        report_outputs = build_hybrid_report(
-            predictions_path=hybrid_result["predictions_path"],
-            fusion_policy_path=args.fusion_policy,
-            report_dir=args.report_dir or (args.output_dir / "report"),
-            include_visualizations=not args.skip_visualizations,
-        )
         topics_output_dir = args.topics_output_dir or (args.output_dir / "topics")
         topic_result = run_topics(
             input_path=hybrid_result["predictions_path"],
             output_dir=topics_output_dir,
             model_dir=args.model_dir,
+        )
+        report_outputs = build_hybrid_report(
+            predictions_path=hybrid_result["predictions_path"],
+            fusion_policy_path=args.fusion_policy,
+            report_dir=args.report_dir or (args.output_dir / "report"),
+            topic_summary_path=topic_result["summary_path"],
+            split_dataset_path=config.TRAINING_DATASET_WITH_SPLIT_PATH,
+            include_visualizations=not args.skip_visualizations,
         )
 
         print(f"Hybrid predictions: {hybrid_result['predictions_path']}")
