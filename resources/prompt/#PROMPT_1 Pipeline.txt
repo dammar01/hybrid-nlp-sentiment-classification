@@ -1,0 +1,705 @@
+# Step 1 — Normalisasi `source_registry`
+
+Ini adalah tahap yang harus kita selesaikan sekarang.
+
+## Tujuan
+
+Membuat **satu baris mewakili satu sumber/URL**, bukan satu event atau satu ringkasan.
+
+## Struktur yang diperlukan
+
+```text
+source_id
+url_original
+url_canonical
+url_status
+publisher
+domain
+source_type
+title_original
+title_summary
+published_date
+date_precision
+accessed_date
+location_raw
+province
+regency_city
+district
+village
+contains_public_opinion
+opinion_evidence
+scope_tier
+relevance_score
+access_status
+notes
+```
+
+Kolom lama seperti `event_group`, `category`, dan `text` tidak dihapus. Namun fungsinya diubah:
+
+```text
+event_group → event_candidate_id
+category    → content_category_candidate
+title       → title_summary sementara
+text        → source_summary
+sources     → url_original
+```
+
+## AI melakukan
+
+1. Membuat `source_id` stabil, misalnya:
+
+```text
+SRC-0001
+SRC-0002
+...
+SRC-0042
+```
+
+2. Menormalisasi URL:
+
+* menghapus parameter tracking;
+* menyamakan HTTP/HTTPS bila relevan;
+* memisahkan URL asli dan canonical;
+* mendeteksi URL identik;
+* mendeteksi domain.
+
+3. Mengusulkan `source_type`:
+
+```text
+news
+journal
+government
+corporate
+repository
+regulation
+social_media
+other
+```
+
+4. Memisahkan lokasi:
+
+```text
+province
+regency_city
+district
+village
+```
+
+5. Mengusulkan:
+
+```text
+contains_public_opinion
+opinion_evidence
+scope_tier
+relevance_score
+```
+
+6. Menandai semua kasus ambigu.
+
+## Anda melakukan
+
+Anda tidak perlu mengisi semuanya manual. Fokus Anda hanya pada kasus yang tidak dapat dipastikan AI:
+
+1. membuka URL yang berstatus gagal atau meragukan;
+2. mencocokkan judul asli pada halaman;
+3. mengonfirmasi tanggal jika hanya tertulis tahun atau bulan;
+4. memastikan apakah narasumber benar-benar warga/pengguna;
+5. menyelesaikan sumber yang memerlukan login atau interaksi;
+6. menilai sumber yang lokasi Kalimantan Baratnya tidak eksplisit.
+
+## Masalah konkret pada file sekarang
+
+### A. Kolom `title` belum tentu judul asli
+
+Contoh:
+
+```text
+Kuota pengembangan sistem PLTS Atap PLN 2024–2028
+```
+
+Judul tersebut dipakai pada dua media berbeda. Sangat mungkin itu adalah judul ringkasan, bukan judul asli masing-masing halaman.
+
+Harus diubah menjadi:
+
+```text
+title_original = judul persis dari halaman
+title_summary  = judul buatan untuk katalog
+```
+
+### B. Tanggal harus dipisahkan dari tingkat presisi
+
+Saat ini terdapat nilai seperti:
+
+```text
+2024
+2024-06
+2024-2026
+```
+
+Jangan memaksanya menjadi tanggal palsu seperti `2024-01-01`.
+
+Gunakan:
+
+| published_date | date_precision |
+| -------------- | -------------- |
+| 2024-06-08     | day            |
+| 2024-06        | month          |
+| 2024           | year           |
+| 2024-2026      | period         |
+
+### C. Ada satu URL untuk lebih dari satu event
+
+URL Kumparan digunakan pada:
+
+```text
+KTP-MERABU-PLTS-2024
+MLW-TOGAN-PLTS-2025
+```
+
+Pada `source_registry`, URL itu hanya boleh muncul sekali.
+
+Kelak pada Step 2, URL tersebut dapat dihubungkan ke dua event melalui tabel relasi.
+
+### D. Ringkasan identik tidak boleh dianggap isi sumber
+
+Sebanyak 24 dari 42 baris berada dalam kelompok teks identik. Contohnya:
+
+* Lemukutan;
+* Pulau Limbung;
+* Sepok Keladi;
+* Sungai Tebelian;
+* Togan Baru;
+* Merabu Jaya;
+* kesenjangan listrik Ketapang;
+* kesenjangan listrik Landak.
+
+Pada tahap ini, `text` tetap dipertahankan sebagai:
+
+```text
+source_summary
+```
+
+Bukan:
+
+```text
+text_raw
+```
+
+---
+
+## Audit Step 1
+
+Step 1 baru dinyatakan **PASS** jika memenuhi semuanya:
+
+| Pemeriksaan         | Syarat lulus                                          |
+| ------------------- | ----------------------------------------------------- |
+| Identitas sumber    | 100% memiliki `source_id` unik                        |
+| Satu URL per sumber | Tidak ada URL canonical identik dalam dua baris       |
+| Judul               | `title_original` dan `title_summary` dipisahkan       |
+| Jenis sumber        | 100% menggunakan controlled vocabulary                |
+| Tanggal             | Tidak ada tanggal buatan                              |
+| Presisi tanggal     | Semua tanggal parsial memiliki `date_precision`       |
+| Lokasi              | Provinsi dan kabupaten/kota dipisahkan bila tersedia  |
+| Status URL          | Semua URL memiliki status                             |
+| Opini publik        | Semua baris memiliki `yes`, `no`, atau `uncertain`    |
+| Tier                | Semua sumber memiliki A, B, C, D, atau `out_of_scope` |
+| Ambiguitas          | Semua ketidakpastian ditulis dalam `notes`            |
+
+Critical error yang membuat Step 1 gagal:
+
+* URL rusak tanpa catatan;
+* judul ringkasan dimasukkan sebagai judul asli;
+* satu URL masih muncul sebagai dua sumber;
+* tanggal dipalsukan;
+* narasi institusi ditandai opini publik tanpa kutipan;
+* lokasi diasumsikan tanpa bukti sumber.
+
+---
+
+# Step 2 — Bangun `event_registry`
+
+Tahap ini belum dikerjakan sebelum Step 1 lulus.
+
+## Tujuan
+
+Memisahkan:
+
+```text
+banyak sumber
+```
+
+dari:
+
+```text
+banyak peristiwa nyata
+```
+
+## Output
+
+### `event_registry.csv`
+
+```text
+event_id
+event_name
+event_type
+event_date_start
+event_date_end
+province
+regency_city
+district
+village
+technology_type
+implementation_status
+scope_tier
+event_notes
+```
+
+### `event_source_map.csv`
+
+```text
+event_id
+source_id
+source_role
+coverage_type
+is_primary_source
+```
+
+## AI melakukan
+
+* clustering berdasarkan nama proyek, lokasi, tanggal, aktor, dan kapasitas;
+* mendeteksi event kandidat yang sama;
+* mendeteksi satu sumber yang membahas beberapa event;
+* membuat kandidat primary source.
+
+## Anda melakukan
+
+* memutuskan kasus yang secara semantik ambigu;
+* menentukan apakah proyek, peresmian, pelatihan, dan keluhan merupakan event terpisah;
+* memastikan event tidak digabung hanya karena lokasinya sama.
+
+## Gate
+
+* setiap sumber terhubung ke minimal satu event;
+* satu sumber boleh terhubung ke beberapa event;
+* tidak ada dua `event_id` untuk kejadian yang sama;
+* seluruh keputusan merge/split memiliki alasan;
+* event yang hanya konteks kebijakan dibedakan dari event implementasi.
+
+---
+
+# Step 3 — Triage berdasarkan potensi opini
+
+Kita tidak langsung mengambil isi lengkap seluruh 42 sumber.
+
+## Tujuan
+
+Mendahulukan sumber yang menghasilkan opini nyata.
+
+## Kolom tambahan
+
+```text
+extraction_priority
+expected_opinion_yield
+access_difficulty
+priority_reason
+```
+
+## Prioritas
+
+| Prioritas | Sumber                                                   |
+| --------- | -------------------------------------------------------- |
+| P1        | Kutipan warga, pengguna, penerima manfaat, komentar      |
+| P2        | Berita lapangan yang kemungkinan berisi wawancara        |
+| P3        | Jurnal dengan survei, wawancara, atau respons masyarakat |
+| P4        | Narasi pemerintah dan perusahaan                         |
+| P5        | Regulasi, statistik, inventaris, studi desain teknis     |
+
+## AI melakukan
+
+* membaca ringkasan dan metadata;
+* mengusulkan P1–P5;
+* memperkirakan jumlah kandidat opini;
+* membuat urutan ekstraksi.
+
+## Anda melakukan
+
+* memeriksa sumber yang klasifikasinya ambigu;
+* menaikkan prioritas sumber yang Anda ketahui memiliki komentar atau wawancara;
+* menentukan sumber yang tidak layak dilanjutkan.
+
+## Gate
+
+* semua sumber memiliki prioritas;
+* semua P1 dan P2 memiliki alasan;
+* sumber nonopini tidak dibuang, hanya dipindahkan ke konteks;
+* tidak ada sumber teknis murni dipaksakan menjadi sumber sentimen.
+
+---
+
+# Step 4 — Ambil isi asli sumber prioritas
+
+## Tujuan
+
+Menghasilkan dokumen sumber yang dapat ditelusuri.
+
+## Output
+
+```text
+source_documents.jsonl
+```
+
+Struktur:
+
+```text
+source_id
+retrieved_at
+content_type
+text_raw
+retrieval_method
+content_status
+content_hash
+```
+
+## AI melakukan
+
+* mengambil artikel yang bisa diakses;
+* mengekstrak isi utama;
+* menghapus menu, iklan, footer, dan navigasi dari salinan kerja;
+* menyimpan teks asli;
+* membuat hash;
+* menandai halaman yang gagal.
+
+## Anda melakukan
+
+* membuka sumber dengan login, paywall, CAPTCHA, atau JavaScript kompleks;
+* menyalin isi dengan tetap mempertahankan bentuk asli;
+* mengambil komentar atau caption yang tidak dapat diakses otomatis;
+* mencatat tanggal pengambilan.
+
+## Aturan
+
+`text_raw` tidak boleh:
+
+* diparafrasekan;
+* diringkas;
+* diterjemahkan;
+* diperbaiki ejaannya;
+* dicampur dengan artikel lain.
+
+## Gate
+
+Untuk semua sumber P1 dan P2:
+
+* `text_raw` tersedia atau memiliki alasan kegagalan;
+* judul, tanggal, dan URL tersimpan;
+* tidak ada ringkasan AI di kolom `text_raw`;
+* setiap teks memiliki hash;
+* sumber gagal dipisahkan dari sumber berhasil.
+
+---
+
+# Step 5 — Identifikasi pembicara dan kandidat opini
+
+## Tujuan
+
+Memisahkan pernyataan manusia dari narasi lain.
+
+## Output
+
+```text
+opinion_candidates.csv
+```
+
+Struktur:
+
+```text
+candidate_id
+source_id
+event_id
+speaker_name
+speaker_type
+quote_type
+text_span_raw
+span_start
+span_end
+is_public_opinion
+selection_reason
+confidence
+review_status
+```
+
+## AI melakukan
+
+* mencari kutipan langsung dan tidak langsung;
+* mengusulkan jenis pembicara;
+* menandai kalimat evaluatif;
+* membedakan fakta dengan pendapat;
+* menyertakan posisi kutipan dalam teks sumber.
+
+## Anda melakukan
+
+* memutuskan speaker ambigu;
+* memastikan kepala desa, pengurus fasilitas, atau teknisi dikategorikan dengan tepat;
+* menolak kalimat yang hanya berupa fakta;
+* memastikan kutipan tidak terlepas dari konteks.
+
+## Gate
+
+* setiap kandidat dapat ditelusuri ke `text_raw`;
+* tidak ada kutipan yang dibuat ulang;
+* fakta tidak masuk sebagai opini netral;
+* speaker institusi dan publik dipisahkan;
+* kandidat berconfidence rendah sudah diperiksa.
+
+---
+
+# Step 6 — Pecah menjadi unit opini atomik
+
+## Tujuan
+
+Membuat satu baris berisi satu pendapat terhadap satu target utama.
+
+## Output
+
+```text
+opinion_units_prelabel.csv
+```
+
+Struktur:
+
+```text
+opinion_id
+candidate_id
+source_id
+event_id
+text_raw
+text_clean
+speaker_type
+sentiment_target
+aspect
+scope_tier
+atomicity_status
+confidence
+```
+
+## AI melakukan
+
+* memecah klausa;
+* mengusulkan target;
+* mengusulkan aspek;
+* menandai kalimat multi-target;
+* menghasilkan `text_clean` tanpa mengubah makna.
+
+## Anda melakukan
+
+* memastikan pemecahan tidak mengubah posisi pembicara;
+* menentukan target dominan pada kasus ambigu;
+* memutuskan apakah satu kalimat perlu satu atau beberapa unit.
+
+## Gate
+
+Setiap baris harus memenuhi:
+
+```text
+satu pendapat
+satu target utama
+satu pembicara
+satu event
+dapat dilacak ke teks asli
+```
+
+Kalimat seperti:
+
+> Panelnya membantu, tetapi pemasangannya lambat.
+
+Tidak boleh tetap satu baris.
+
+---
+
+# Step 7 — Deduplikasi teks dan kutipan
+
+## Tujuan
+
+Mencegah satu kutipan dihitung berulang karena dimuat ulang banyak media.
+
+## AI melakukan
+
+* exact hash;
+* normalized hash;
+* fuzzy similarity;
+* semantic similarity;
+* deteksi berita salinan;
+* deteksi kutipan lintas sumber.
+
+## Anda melakukan
+
+* menyelesaikan pasangan yang mirip tetapi konteksnya berbeda;
+* memilih versi canonical;
+* memastikan kutipan berbeda dari orang berbeda tidak salah dihapus.
+
+## Output
+
+```text
+opinion_units_deduplicated.csv
+duplicate_groups.csv
+```
+
+## Gate
+
+* semua exact duplicate dikelompokkan;
+* near-duplicate berconfidence tinggi diperiksa;
+* satu teks canonical dipilih;
+* sumber duplikat tetap disimpan sebagai provenance;
+* hanya satu versi masuk training.
+
+---
+
+# Step 8 — Audit kecukupan data
+
+Ini menentukan apakah kita sudah boleh melabeli dan melatih model, atau harus kembali mencari data.
+
+## Audit yang dilakukan
+
+```text
+jumlah unit opini unik
+jumlah event
+jumlah lokasi
+jumlah speaker
+jumlah target
+jumlah aspek
+distribusi Tier A/B/C
+dominasi satu event
+dominasi satu media
+potensi ketimpangan sentimen
+```
+
+## Keputusan
+
+### Dataset pilot
+
+Cukup untuk menguji pipeline, tetapi belum mengklaim performa final.
+
+Target operasional:
+
+```text
+≥ 50 unit opini unik
+≥ 8 event
+terdapat opini positif dan negatif
+tidak ada satu event mendominasi > 30%
+```
+
+### Dataset awal untuk baseline ML
+
+Target operasional yang lebih aman:
+
+```text
+≥ 150 unit opini unik
+≥ 15 event
+≥ 3 kelompok lokasi
+positif dan negatif masing-masing ≥ 30 unit
+semua unit Tier A/B atau diberi penanda eksplisit
+```
+
+Angka ini merupakan batas kerja, bukan hukum universal.
+
+## Gate
+
+Apabila tidak cukup:
+
+```text
+KEMBALI KE STEP 3
+→ cari sumber opinion-rich baru
+→ ekstrak
+→ audit lagi
+```
+
+Bukan:
+
+```text
+lanjut training dengan data terlalu sedikit
+```
+
+---
+
+# Step 9 — Labeling dan adjudikasi
+
+Baru dilakukan setelah jumlah dan variasi opini dinilai cukup.
+
+Output akhirnya:
+
+```text
+dataset_sentiment_labeled.csv
+```
+
+AI boleh memberi label awal, tetapi label tersebut berstatus:
+
+```text
+machine_suggestion
+```
+
+Keputusan final tetap memiliki:
+
+```text
+human_review_status
+annotation_confidence
+annotation_notes
+```
+
+---
+
+# Step 10 — Split dataset tanpa leakage
+
+## Aturan utama
+
+Split berdasarkan `event_id`, bukan baris acak.
+
+```text
+event A → hanya train
+event B → hanya validation
+event C → hanya test
+```
+
+Kutipan yang sama atau media salinan juga harus berada pada split yang sama.
+
+## Gate final
+
+* tidak ada `event_id` lintas split;
+* tidak ada duplicate group lintas split;
+* distribusi label terdokumentasi;
+* dataset card tersedia;
+* seluruh sampel dapat ditelusuri ke sumber.
+
+---
+
+# Urutan kerja kita mulai sekarang
+
+```text
+[PASS] Step 0 — Audit input
+[AKTIF] Step 1 — Normalisasi source_registry
+[TERKUNCI] Step 2 — Event registry
+[TERKUNCI] Step 3 — Opinion-yield triage
+[TERKUNCI] Step 4 — Full-text extraction
+[TERKUNCI] Step 5 — Opinion candidates
+[TERKUNCI] Step 6 — Atomic opinion units
+[TERKUNCI] Step 7 — Deduplikasi
+[TERKUNCI] Step 8 — Dataset sufficiency
+[TERKUNCI] Step 9 — Labeling
+[TERKUNCI] Step 10 — Split dan final audit
+```
+
+## Tugas langsung pada Step 1
+
+Saya akan mengolah CSV saat ini menjadi `source_registry_v1` dengan:
+
+1. satu baris per URL;
+2. `source_id` unik;
+3. pemisahan URL original dan canonical;
+4. pemisahan tanggal dan presisinya;
+5. kandidat tipe sumber;
+6. lokasi terstruktur;
+7. kolom opini publik;
+8. kandidat Tier A–D;
+9. daftar kasus yang perlu Anda periksa;
+10. laporan audit PASS/REWORK.
+
+Setelah hasil Step 1 tersedia, Anda hanya perlu mengerjakan daftar kasus manual yang saya tandai. Kita tidak akan menyentuh pengelompokan event sebelum seluruh critical error Step 1 menjadi nol.

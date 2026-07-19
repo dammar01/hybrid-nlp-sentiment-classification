@@ -1,0 +1,1 @@
+lakukan validasi terhadap dataset yang saya miliki lalu buat table secara keseluruhan dari dataset yang saya berikan ini apakah sudah dapat digunakan sebagai labeling atau tidak dengan mengecek setiap url yang ada. lakukan juga pengecekan url mana yang memiliki potensi bisa dilakukan ekstraksi kalimat subjektif lebih dari 1 untuk menjadi data baru.
